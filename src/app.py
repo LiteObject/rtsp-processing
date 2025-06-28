@@ -5,13 +5,16 @@ Main application loop for capturing images from an RTSP stream, analyzing them f
 and broadcasting a message to a Google Hub device if a person is detected.
 """
 
-import time
 import logging
 import os
+import time
+
+# Ensure the current directory is in sys.path for local imports
 from dotenv import load_dotenv
-from capture_image import capture_image_from_rtsp
-from process_image import ImageAnalysisResult, analyze_image
-from google_broadcast import send_message_to_google_hub
+
+from src.google_broadcast import send_message_to_google_hub
+from src.image_analysis import ImageAnalysisResult, analyze_image
+from src.image_capture import capture_image_from_rtsp
 
 # Configure logging
 logging.basicConfig(
@@ -42,9 +45,11 @@ def main(rtsp_url):
         try:
             image_path = capture_image_from_rtsp(rtsp_url)
             if image_path:
-                result: ImageAnalysisResult = analyze_image(image_path)
-                if result.person_present:
-                    desc = result.description or "Person detection unknown"
+                result: ImageAnalysisResult = analyze_image(
+                    image_path, provider="openai", model="gpt-4o-mini")
+                if result["person_present"]:
+                    desc = result.get(
+                        "description") or "Person detection unknown"
                     message = BROADCAST_MESSAGE_TEMPLATE.format(desc=desc)
                     send_message_to_google_hub(message, GOOGLE_DEVICE_IP)
                 else:

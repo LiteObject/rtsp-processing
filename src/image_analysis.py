@@ -16,7 +16,7 @@ from typing import TypedDict, Union
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
 
-from llm_factory import LLMType, get_llm
+from .llm_factory import LLMType, get_llm
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
