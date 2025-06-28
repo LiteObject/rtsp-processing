@@ -56,7 +56,9 @@ coverage.xml
 
 # dotenv
 .env
+# Exclude all .env.* files except .env.example
 .env.*
+!.env.example
 
 # Logs
 *.log
