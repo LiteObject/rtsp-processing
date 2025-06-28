@@ -7,6 +7,8 @@ and broadcasting a message to a Google Hub device if a person is detected.
 
 import time
 import logging
+import os
+from dotenv import load_dotenv
 from capture_image import capture_image_from_rtsp
 from process_image import ImageAnalysisResult, analyze_image
 from google_broadcast import send_message_to_google_hub
@@ -16,6 +18,9 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+
+# Load environment variables from .env file
+load_dotenv()
 
 GOOGLE_DEVICE_IP = "192.168.7.38"  # Change to your Google Hub IP
 BROADCAST_MESSAGE_TEMPLATE = "Person detected: {desc}"
@@ -54,5 +59,8 @@ def main(rtsp_url):
 
 
 if __name__ == "__main__":
-    RTSP_URL = "rtsp://mvxfamily:P_9Pup3U!KY5-fc@192.168.7.53/stream2"
+    RTSP_URL = os.getenv("RTSP_URL")
+    if not RTSP_URL:
+        logging.error("RTSP_URL not set in environment variables.")
+        exit(1)
     main(RTSP_URL)
