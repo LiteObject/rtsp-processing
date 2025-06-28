@@ -24,6 +24,21 @@ Install all dependencies with:
 pip install -r requirements.txt
 ```
 
+### Running Unit Tests
+Unit tests are provided in the `tests/` directory and use `pytest`.
+
+To run all tests:
+```sh
+pytest
+```
+
+To run a specific test file:
+```sh
+pytest tests/test_process_image.py
+```
+
+Make sure all dependencies are installed before running tests.
+
 ## Environment Variables
 Copy `.env.example` to `.env` and set your OpenAI API key if using OpenAI:
 ```
@@ -35,7 +50,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 ### 1. Capture and Analyze Images, Broadcast if Person Detected
 Run the main application:
 ```sh
-python app.py
+python -m src.app
 ```
 - Captures an image from the RTSP stream every 10 seconds
 - Analyzes the image for human presence
@@ -44,28 +59,28 @@ python app.py
 ### 2. Discover Google Devices
 List all Google Hub/Chromecast devices on your network:
 ```sh
-python google_devices.py
+python -m src.google_devices
 ```
 
 ### 3. Manual Image Capture
 Capture a single image from an RTSP stream:
 ```sh
-python capture_image.py
+python -m src.capture_image
 ```
 
 ### 4. Manual Google Hub Broadcast
 Send a custom message to a Google Hub:
 ```sh
-python google_broadcast.py
+python -m src.google_broadcast
 ```
 
 ## File Overview
-- `app.py` — Main loop for capture, analysis, and broadcast
-- `capture_image.py` — Captures a single image from RTSP
-- `process_image.py` — Analyzes images using LLMs (Ollama/OpenAI)
-- `llm_factory.py` — Factory for LLM model selection
-- `google_broadcast.py` — Broadcasts TTS messages to Google Hub/Chromecast
-- `google_devices.py` — Discovers Google devices on the network
+- `src/app.py` — Main loop for capture, analysis, and broadcast
+- `src/capture_image.py` — Captures a single image from RTSP
+- `src/process_image.py` — Analyzes images using LLMs (Ollama/OpenAI)
+- `src/llm_factory.py` — Factory for LLM model selection
+- `src/google_broadcast.py` — Broadcasts TTS messages to Google Hub/Chromecast
+- `src/google_devices.py` — Discovers Google devices on the network
 - `requirements.txt` — Python dependencies
 - `.env.example` — Example environment config
 

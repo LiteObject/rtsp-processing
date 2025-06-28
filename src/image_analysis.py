@@ -1,5 +1,5 @@
 """
-process_image.py
+image_analysis.py
 
 This module provides a function to analyze an image using either Ollama or OpenAI LLMs.
 It supports local file paths for Ollama and automatically encodes images as base64 data 
