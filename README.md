@@ -65,7 +65,7 @@ python -m src.google_devices
 ### 3. Manual Image Capture
 Capture a single image from an RTSP stream:
 ```sh
-python -m src.capture_image
+python -m src.image_capture
 ```
 
 ### 4. Manual Google Hub Broadcast
@@ -76,8 +76,8 @@ python -m src.google_broadcast
 
 ## File Overview
 - `src/app.py` — Main loop for capture, analysis, and broadcast
-- `src/capture_image.py` — Captures a single image from RTSP
-- `src/process_image.py` — Analyzes images using LLMs (Ollama/OpenAI)
+- `src/image_capture.py` — Captures a single image from RTSP
+- `src/image_analysis.py` — Analyzes images using LLMs (Ollama/OpenAI)
 - `src/llm_factory.py` — Factory for LLM model selection
 - `src/google_broadcast.py` — Broadcasts TTS messages to Google Hub/Chromecast
 - `src/google_devices.py` — Discovers Google devices on the network
@@ -87,7 +87,7 @@ python -m src.google_broadcast
 ## Configuration
 - Edit `GOOGLE_DEVICE_IP` in `app.py` and `google_broadcast.py` to match your Google Hub's IP address.
 - Edit the RTSP URL in `app.py` and other scripts to match your camera.
-- Change LLM model names in `process_image.py` and `llm_factory.py` as needed.
+- Change LLM model names in `image_analysis.py` and `llm_factory.py` as needed.
 
 ## Contributing
 
