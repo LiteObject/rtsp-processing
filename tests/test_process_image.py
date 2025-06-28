@@ -1,5 +1,5 @@
-from llm_factory import get_llm, LLMType
-from process_image import image_to_base64_data_url, get_prompt_from_schema, ImageAnalysisResult
+from src.llm_factory import get_llm, LLMType
+from src.image_analysis import image_to_base64_data_url, get_prompt_from_schema, ImageAnalysisResult
 import pytest
 import os
 import sys

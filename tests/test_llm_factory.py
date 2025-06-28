@@ -1,4 +1,4 @@
-from llm_factory import get_llm, LLMType
+from src.llm_factory import get_llm, LLMType
 import pytest
 import os
 import sys
