@@ -1,0 +1,58 @@
+"""
+app.py
+
+Main application loop for capturing images from an RTSP stream, analyzing them for human presence,
+and broadcasting a message to a Google Hub device if a person is detected.
+"""
+
+import time
+import logging
+from capture_image import capture_image_from_rtsp
+from process_image import ImageAnalysisResult, analyze_image
+from google_broadcast import send_message_to_google_hub
+
+# Configure logging
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+GOOGLE_DEVICE_IP = "192.168.7.38"  # Change to your Google Hub IP
+BROADCAST_MESSAGE_TEMPLATE = "Person detected: {desc}"
+
+
+def main(rtsp_url):
+    """
+    Continuously captures images from the RTSP stream every 10 seconds, analyzes them,
+    and broadcasts a message if a human is detected.
+
+    Args:
+        rtsp_url (str): The RTSP URL of the camera.
+
+    Returns:
+        None
+    """
+    logging.info("Starting image capture and analysis system...")
+    while True:
+        try:
+            image_path = capture_image_from_rtsp(rtsp_url)
+            if image_path:
+                result: ImageAnalysisResult = analyze_image(image_path)
+                if result.person_present:
+                    desc = result.description or "Person detection unknown"
+                    message = BROADCAST_MESSAGE_TEMPLATE.format(desc=desc)
+                    send_message_to_google_hub(message, GOOGLE_DEVICE_IP)
+                else:
+                    logging.info("No person detected in the image.")
+            else:
+                logging.warning("Image capture failed.")
+        except (IOError, ValueError) as e:
+            logging.exception("Error in main loop: %s", e)
+        except RuntimeError as e:
+            logging.exception("Runtime error in main loop: %s", e)
+        time.sleep(10)
+
+
+if __name__ == "__main__":
+    RTSP_URL = "rtsp://mvxfamily:P_9Pup3U!KY5-fc@192.168.7.53/stream2"
+    main(RTSP_URL)
