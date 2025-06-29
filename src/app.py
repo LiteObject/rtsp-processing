@@ -9,11 +9,13 @@ import logging
 import os
 import time
 
-# Ensure the current directory is in sys.path for local imports
 from dotenv import load_dotenv
 
+from src.computer_vision import person_detected_yolov8
+# Ensure the current directory is in sys.path for local imports
+from src.config import Config
 from src.google_broadcast import send_message_to_google_hub
-from src.image_analysis import ImageAnalysisResult, analyze_image, person_detected_yolov8
+from src.image_analysis import ImageAnalysisResult, analyze_image
 from src.image_capture import capture_image_from_rtsp
 
 # Configure logging
@@ -22,31 +24,19 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# Load environment variables from .env file
-load_dotenv()
 
-GOOGLE_DEVICE_IP = os.getenv("GOOGLE_DEVICE_IP")
-BROADCAST_MESSAGE_TEMPLATE = "Person detected: {desc}"
-
-
-def main(rtsp_url):
+def main():
     """
-    Continuously captures images from the RTSP stream every 10 seconds, analyzes them,
-    and broadcasts a message if a human is detected.
-
-    Args:
-        rtsp_url (str): The RTSP URL of the camera.
-
-    Returns:
-        None
+    Main service loop for image capture, analysis, and broadcast.
     """
+    Config.validate()
     logging.info("Starting image capture and analysis system...")
     while True:
         try:
-            image_path = capture_image_from_rtsp(rtsp_url)
+            image_path = capture_image_from_rtsp(Config.RTSP_URL)
             if not image_path:
                 logging.warning("Image capture failed (could not save image).")
-            elif person_detected_yolov8(image_path):
+            elif person_detected_yolov8(image_path, model_path=Config.YOLO_MODEL_PATH):
                 result: ImageAnalysisResult = analyze_image(
                     image_path, provider="openai", model="gpt-4o-mini")
                 if result["person_present"]:
@@ -57,8 +47,10 @@ def main(rtsp_url):
                     image_path = detected_path
                     desc = result.get(
                         "description") or "Person detection unknown"
-                    message = BROADCAST_MESSAGE_TEMPLATE.format(desc=desc)
-                    send_message_to_google_hub(message, GOOGLE_DEVICE_IP)
+                    message = Config.BROADCAST_MESSAGE_TEMPLATE.format(
+                        desc=desc)
+                    send_message_to_google_hub(
+                        message, Config.GOOGLE_DEVICE_IP)
                 else:
                     logging.info(
                         "No person detected in the image (LLM analysis).")
@@ -69,15 +61,8 @@ def main(rtsp_url):
             logging.exception("Error in main loop: %s", e)
         except RuntimeError as e:
             logging.exception("Runtime error in main loop: %s", e)
-        time.sleep(10)
+        time.sleep(Config.CAPTURE_INTERVAL)
 
 
 if __name__ == "__main__":
-    RTSP_URL = os.getenv("RTSP_URL")
-    if not RTSP_URL:
-        logging.error("RTSP_URL not set in environment variables.")
-        exit(1)
-    if not GOOGLE_DEVICE_IP:
-        logging.error("GOOGLE_DEVICE_IP not set in environment variables.")
-        exit(1)
-    main(RTSP_URL)
+    main()

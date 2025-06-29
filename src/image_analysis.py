@@ -15,7 +15,6 @@ from typing import TypedDict, Union
 
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
-from ultralytics import YOLO
 
 from .llm_factory import LLMProvider, get_llm
 
@@ -178,27 +177,6 @@ def get_prompt_from_schema(schema: type) -> str:
         f"Respond ONLY with a JSON object matching this structure: {example_json}. "
         f"Fields: {doc.strip()}"
     )
-
-
-def person_detected_yolov8(image_path) -> bool:
-    """
-    Detects whether a person is present in the given image using YOLOv8.
-
-    Args:
-        image_path (str): Path to the image file to analyze.
-
-    Returns:
-        bool: True if a person is detected in the image, False otherwise.
-    """
-    model = YOLO('yolov8n.pt')
-    results = model(image_path)
-    for _result in results:
-        for box in _result.boxes:
-            class_id = int(box.cls[0])
-            class_name = model.names[class_id]
-            if class_name == 'person':
-                return True
-    return False
 
 
 # Example usage
