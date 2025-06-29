@@ -25,7 +25,7 @@ logging.basicConfig(
 # Load environment variables from .env file
 load_dotenv()
 
-GOOGLE_DEVICE_IP = "192.168.7.38"  # Change to your Google Hub IP
+GOOGLE_DEVICE_IP = os.getenv("GOOGLE_DEVICE_IP")
 BROADCAST_MESSAGE_TEMPLATE = "Person detected: {desc}"
 
 
@@ -72,5 +72,8 @@ if __name__ == "__main__":
     RTSP_URL = os.getenv("RTSP_URL")
     if not RTSP_URL:
         logging.error("RTSP_URL not set in environment variables.")
+        exit(1)
+    if not GOOGLE_DEVICE_IP:
+        logging.error("GOOGLE_DEVICE_IP not set in environment variables.")
         exit(1)
     main(RTSP_URL)
