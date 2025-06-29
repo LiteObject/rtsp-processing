@@ -53,6 +53,90 @@ class ImageAnalysisResult(TypedDict):
     description: str
 
 
+def _validate_image_path(image_path):
+    if not os.path.exists(image_path) and not (
+        image_path.startswith(
+            "http://") or image_path.startswith("https://") or image_path.startswith("data:")
+    ):
+        logging.error("Image file does not exist: %s", image_path)
+        return False, {"person_present": None, "description": f"Image file not found: {image_path}"}
+    return True, None
+
+
+def _get_image_url(image_path, provider, openai_api_key):
+    if provider == "openai" or (isinstance(provider, LLMProvider) and provider == LLMProvider.OPENAI):
+        if openai_api_key is None:
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+        if not (image_path.startswith("http://") or image_path.startswith("https://") or image_path.startswith("data:")):
+            return image_to_base64_data_url(image_path)
+        else:
+            return image_path
+    else:
+        return image_path
+
+
+def _call_llm(image_url, prompt, provider, openai_api_key, model, temperature):
+    llm = get_llm(provider=provider, openai_api_key=openai_api_key,
+                  model=model, temperature=temperature)
+    messages = [
+        HumanMessage(content=[
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": image_url}}
+        ])
+    ]
+    response = llm.invoke(messages)
+    content = response.content.strip() if hasattr(
+        response, 'content') else str(response).strip()
+    return content
+
+
+def _parse_llm_response(content) -> ImageAnalysisResult:
+    # Handle Markdown code block wrapping (e.g., ```json ... ```
+    if content.startswith('```'):
+        # Remove code block markers and optional 'json' label
+        lines = content.splitlines()
+        if lines[0].strip().startswith('```'):
+            lines = lines[1:] if lines[0].strip() in (
+                '```', '```json') else lines
+        if lines and lines[-1].strip().startswith('```'):
+            lines = lines[:-1]
+        content = '\n'.join(lines).strip()
+    try:
+        # If content is already a dict, return it directly
+        if isinstance(content, dict):
+            return content
+        else:
+            return json.loads(content)
+    except json.JSONDecodeError:
+        # Try to parse again if the content is a quoted
+        # JSON string (double-encoded or with Python literals)
+        if isinstance(content, str) and ((content.startswith('{')
+                                          and content.endswith('}'))
+                                         or (content.startswith('[')
+                                             and content.endswith(']'))):
+            try:
+                # Replace Python literals with JSON equivalents
+                safe_content = content.replace("'", '"') \
+                    .replace('True', 'true') \
+                    .replace('False', 'false') \
+                    .replace('None', 'null')
+                return json.loads(safe_content)
+            except json.JSONDecodeError:
+                logging.error(
+                    "Failed to parse LLM response as JSON: %s", content)
+                return {"person_present": None,
+                        "description": content}
+        else:
+            logging.error(
+                "Failed to parse LLM response as JSON: %s", content)
+            return {"person_present": None, "description": content}
+
+
+def _handle_llm_error(e, error_type):
+    logging.exception(f"LLM call failed ({error_type})")
+    return {"person_present": None, "description": f"LLM error: {e}"}
+
+
 def analyze_image(
     image_path,
     provider="ollama",
@@ -75,90 +159,21 @@ def analyze_image(
         ImageAnalysisResult: Structured output with keys 'person_present' (bool or None) 
         and 'description' (str).
     """
-    if not os.path.exists(image_path) and not (
-        image_path.startswith(
-            "http://") or image_path.startswith("https://") or image_path.startswith("data:")
-    ):
-        logging.error("Image file does not exist: %s", image_path)
-        return {"person_present": None, "description": f"Image file not found: {image_path}"}
-
-    if provider == "openai" or (isinstance(provider, LLMProvider) and provider == LLMProvider.OPENAI):
-        if openai_api_key is None:
-            openai_api_key = os.getenv("OPENAI_API_KEY")
-        # Convert local file to base64 data URL for OpenAI
-        if not (image_path.startswith("http://")
-                or image_path.startswith("https://")
-                or image_path.startswith("data:")):
-            image_url = image_to_base64_data_url(image_path)
-        else:
-            image_url = image_path
-    else:
-        image_url = image_path
-
+    valid, error_result = _validate_image_path(image_path)
+    if not valid:
+        return error_result
+    image_url = _get_image_url(image_path, provider, openai_api_key)
     prompt = get_prompt_from_schema(ImageAnalysisResult)
     try:
-        llm = get_llm(provider=provider, openai_api_key=openai_api_key,
-                      model=model, temperature=temperature)
-        messages = [
-            HumanMessage(content=[
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": image_url}}
-            ])
-        ]
-        response = llm.invoke(messages)
-        content = response.content.strip() if hasattr(
-            response, 'content') else str(response).strip()
-        # Handle Markdown code block wrapping (e.g., ```json ... ```
-        if content.startswith('```'):
-            # Remove code block markers and optional 'json' label
-            lines = content.splitlines()
-            if lines[0].strip().startswith('```'):
-                lines = lines[1:] if lines[0].strip() in (
-                    '```', '```json') else lines
-            if lines and lines[-1].strip().startswith('```'):
-                lines = lines[:-1]
-            content = '\n'.join(lines).strip()
-        try:
-            # If content is already a dict, return it directly
-            if isinstance(content, dict):
-                structured: ImageAnalysisResult = content
-            else:
-                structured: ImageAnalysisResult = json.loads(content)
-        except json.JSONDecodeError:
-            # Try to parse again if the content is a quoted
-            # JSON string (double-encoded or with Python literals)
-            if isinstance(content, str) and ((content.startswith('{')
-                                              and content.endswith('}'))
-                                             or (content.startswith('[')
-                                                 and content.endswith(']'))):
-                try:
-                    # Replace Python literals with JSON equivalents
-                    safe_content = content.replace("'", '"') \
-                        .replace('True', 'true') \
-                        .replace('False', 'false') \
-                        .replace('None', 'null')
-                    structured: ImageAnalysisResult = json.loads(safe_content)
-                except json.JSONDecodeError:
-                    logging.error(
-                        "Failed to parse LLM response as JSON: %s", content)
-                    structured = {"person_present": None,
-                                  "description": content}
-            else:
-                logging.error(
-                    "Failed to parse LLM response as JSON: %s", content)
-                structured = {"person_present": None, "description": content}
-        return structured
+        content = _call_llm(image_url, prompt, provider,
+                            openai_api_key, model, temperature)
+        return _parse_llm_response(content)
     except json.JSONDecodeError as e:
-        # Handle JSON errors specifically
-        logging.exception("LLM call failed (JSONDecodeError)")
-        return {"person_present": None, "description": f"LLM error: {e}"}
+        return _handle_llm_error(e, "JSONDecodeError")
     except (TypeError, ValueError) as e:
-        logging.exception("LLM call failed (TypeError/ValueError)")
-        return {"person_present": None, "description": f"LLM error: {e}"}
+        return _handle_llm_error(e, "TypeError/ValueError")
     except OSError as e:
-        # Handle file errors specifically
-        logging.exception("LLM call failed (OSError)")
-        return {"person_present": None, "description": f"LLM error: {e}"}
+        return _handle_llm_error(e, "OSError")
 
 
 def get_prompt_from_schema(schema: type) -> str:
