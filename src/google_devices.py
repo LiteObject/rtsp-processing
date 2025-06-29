@@ -12,23 +12,34 @@ import pychromecast
 def discover_google_devices():
     """
     Discovers Google Chromecast and compatible devices on the local 
-    network and prints their details.
+    network and returns their details.
 
     Returns:
-        None
+        list: List of device dictionaries with name, ip, model, and uuid
     """
     logging.info("Searching for Google devices on the network...")
     chromecasts, browser = pychromecast.get_chromecasts()
+    devices = []
+    
     if not chromecasts:
         logging.info("No Google devices found.")
     else:
         for device in chromecasts:
-            logging.info("Device Name: %s", device.name)
-            logging.info("IP Address: %s", device.cast_info.host)
-            logging.info("Model: %s", device.model_name)
-            logging.info("UUID: %s", device.uuid)
+            device_info = {
+                "name": device.cast_info.friendly_name,
+                "ip": device.cast_info.host,
+                "model": device.model_name,
+                "uuid": device.uuid
+            }
+            devices.append(device_info)
+            logging.info("Device Name: %s", device_info["name"])
+            logging.info("IP Address: %s", device_info["ip"])
+            logging.info("Model: %s", device_info["model"])
+            logging.info("UUID: %s", device_info["uuid"])
             logging.info("%s", "-" * 40)
+    
     pychromecast.discovery.stop_discovery(browser)
+    return devices
 
 
 def main():

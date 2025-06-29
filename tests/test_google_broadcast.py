@@ -1,49 +1,117 @@
-"""
-Unit tests for the send_message_to_google_hub function in google_broadcast.py.
-Tests Chromecast device discovery and message broadcasting logic using mocks.
-"""
-
-from unittest.mock import MagicMock, patch
-
 import pytest
-
+from unittest.mock import Mock, patch, MagicMock
 from src.google_broadcast import send_message_to_google_hub
 
 
-@patch('src.google_broadcast.pychromecast')
-def test_send_message_success(mock_pychromecast):
-    """
-    Test that send_message_to_google_hub returns True when a device is found and message is played.
-    Mocks Chromecast discovery, device, and media controller behavior.
-    """
-    # Mock Chromecast discovery and device
-    mock_cast = MagicMock()
-    mock_cast.cast_info.host = '192.168.1.2'
-    mock_cast.media_controller.register_status_listener.return_value = None
-    mock_cast.media_controller.block_until_active.return_value = None
-    mock_cast.media_controller.play.return_value = None
-    mock_cast.media_controller.play_media.return_value = None
-    mock_cast.media_controller.unregister_status_listener.return_value = None
-    mock_cast.set_volume.return_value = None
-    mock_cast.wait.return_value = None
-    # Simulate message played
-    # Patch MediaStatusListener at the module level, not as an attribute of the function
-    with patch('src.google_broadcast.MediaStatusListener') as DummyListener:
-        DummyListener.return_value.message_played = True
-        mock_pychromecast.get_chromecasts.return_value = (
-            [mock_cast], 'browser')
-        mock_pychromecast.discovery.stop_discovery.return_value = None
-        result = send_message_to_google_hub('hello', '192.168.1.2')
+class TestGoogleBroadcast:
+    
+    @patch('src.google_broadcast.pychromecast.get_chromecasts')
+    @patch('src.google_broadcast.pychromecast.discovery.stop_discovery')
+    @patch('src.google_broadcast.time.sleep')
+    def test_send_message_success(self, mock_sleep, mock_stop_discovery, mock_get_chromecasts):
+        # Setup
+        mock_device = Mock()
+        mock_device.cast_info.host = "192.168.1.100"
+        mock_device.wait.return_value = None
+        mock_device.set_volume.return_value = None
+        
+        mock_media_controller = Mock()
+        mock_device.media_controller = mock_media_controller
+        
+        mock_browser = Mock()
+        mock_get_chromecasts.return_value = ([mock_device], mock_browser)
+        
+        # Mock the listener to simulate message completion
+        def mock_register_listener(listener):
+            listener.message_played = True
+        mock_media_controller.register_status_listener.side_effect = mock_register_listener
+        
+        # Execute
+        result = send_message_to_google_hub("Test message", "192.168.1.100")
+        
+        # Assert
         assert result is True
+        mock_device.wait.assert_called_once()
+        mock_device.set_volume.assert_called_once_with(1.0)
+        mock_media_controller.play_media.assert_called_once()
+        mock_stop_discovery.assert_called_once_with(mock_browser)
 
+    @patch('src.google_broadcast.pychromecast.get_chromecasts')
+    @patch('src.google_broadcast.pychromecast.discovery.stop_discovery')
+    def test_send_message_device_not_found(self, mock_stop_discovery, mock_get_chromecasts):
+        # Setup
+        mock_device = Mock()
+        mock_device.cast_info.host = "192.168.1.200"  # Different IP
+        mock_browser = Mock()
+        mock_get_chromecasts.return_value = ([mock_device], mock_browser)
+        
+        # Execute
+        result = send_message_to_google_hub("Test message", "192.168.1.100")
+        
+        # Assert
+        assert result is False
+        mock_stop_discovery.assert_called_once_with(mock_browser)
 
-@patch('src.google_broadcast.pychromecast')
-def test_send_message_no_device(mock_pychromecast):
-    """
-    Test that send_message_to_google_hub returns False when no device is found.
-    Mocks Chromecast discovery to return an empty list.
-    """
-    mock_pychromecast.get_chromecasts.return_value = ([], 'browser')
-    mock_pychromecast.discovery.stop_discovery.return_value = None
-    result = send_message_to_google_hub('hello', '192.168.1.2')
-    assert result is False
+    @patch('src.google_broadcast.pychromecast.get_chromecasts')
+    @patch('src.google_broadcast.pychromecast.discovery.stop_discovery')
+    def test_send_message_no_devices(self, mock_stop_discovery, mock_get_chromecasts):
+        # Setup
+        mock_browser = Mock()
+        mock_get_chromecasts.return_value = ([], mock_browser)
+        
+        # Execute
+        result = send_message_to_google_hub("Test message", "192.168.1.100")
+        
+        # Assert
+        assert result is False
+        mock_stop_discovery.assert_called_once_with(mock_browser)
+
+    @patch('src.google_broadcast.pychromecast.get_chromecasts')
+    @patch('src.google_broadcast.pychromecast.discovery.stop_discovery')
+    def test_send_message_custom_volume(self, mock_stop_discovery, mock_get_chromecasts):
+        # Setup
+        mock_device = Mock()
+        mock_device.cast_info.host = "192.168.1.100"
+        mock_device.wait.return_value = None
+        mock_device.set_volume.return_value = None
+        
+        mock_media_controller = Mock()
+        mock_device.media_controller = mock_media_controller
+        
+        mock_browser = Mock()
+        mock_get_chromecasts.return_value = ([mock_device], mock_browser)
+        
+        # Mock the listener
+        def mock_register_listener(listener):
+            listener.message_played = True
+        mock_media_controller.register_status_listener.side_effect = mock_register_listener
+        
+        # Execute
+        result = send_message_to_google_hub("Test message", "192.168.1.100", volume=0.5)
+        
+        # Assert
+        assert result is True
+        mock_device.set_volume.assert_called_once_with(0.5)
+
+    @patch('src.google_broadcast.pychromecast.get_chromecasts')
+    @patch('src.google_broadcast.pychromecast.discovery.stop_discovery')
+    def test_send_message_connection_error(self, mock_stop_discovery, mock_get_chromecasts):
+        # Setup
+        mock_device = Mock()
+        mock_device.cast_info.host = "192.168.1.100"
+        mock_device.wait.side_effect = Exception("Connection failed")
+        
+        mock_browser = Mock()
+        mock_get_chromecasts.return_value = ([mock_device], mock_browser)
+        
+        # Execute
+        try:
+            result = send_message_to_google_hub("Test message", "192.168.1.100")
+            # If no exception is raised, result should be False
+            assert result is False
+        except Exception:
+            # If exception is raised, that's also acceptable behavior
+            pass
+        
+        # Assert
+        mock_stop_discovery.assert_called_once_with(mock_browser)

@@ -1,10 +1,5 @@
-from src.llm_factory import get_llm, LLMProvider
-from src.image_analysis import image_to_base64_data_url, get_prompt_from_schema, ImageAnalysisResult
 import pytest
-import os
-import sys
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../src')))
+from src.image_analysis import image_to_base64_data_url, get_prompt_from_schema, ImageAnalysisResult
 
 
 def test_image_to_base64_data_url_png(tmp_path):
