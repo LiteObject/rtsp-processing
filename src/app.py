@@ -13,7 +13,7 @@ import time
 from dotenv import load_dotenv
 
 from src.google_broadcast import send_message_to_google_hub
-from src.image_analysis import ImageAnalysisResult, analyze_image
+from src.image_analysis import ImageAnalysisResult, analyze_image, person_detected_yolov8
 from src.image_capture import capture_image_from_rtsp
 
 # Configure logging
@@ -44,10 +44,15 @@ def main(rtsp_url):
     while True:
         try:
             image_path = capture_image_from_rtsp(rtsp_url)
-            if image_path:
+            if image_path and person_detected_yolov8(image_path):
                 result: ImageAnalysisResult = analyze_image(
                     image_path, provider="openai", model="gpt-4o-mini")
                 if result["person_present"]:
+                    # Add _Detected to the image filename
+                    base, ext = os.path.splitext(image_path)
+                    detected_path = f"{base}_Detected{ext}"
+                    os.rename(image_path, detected_path)
+                    image_path = detected_path
                     desc = result.get(
                         "description") or "Person detection unknown"
                     message = BROADCAST_MESSAGE_TEMPLATE.format(desc=desc)

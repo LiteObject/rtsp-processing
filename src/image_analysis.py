@@ -15,8 +15,9 @@ from typing import TypedDict, Union
 
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
+from ultralytics import YOLO
 
-from .llm_factory import LLMType, get_llm
+from .llm_factory import LLMProvider, get_llm
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -82,7 +83,7 @@ def analyze_image(
         logging.error("Image file does not exist: %s", image_path)
         return {"person_present": None, "description": f"Image file not found: {image_path}"}
 
-    if provider == "openai" or (isinstance(provider, LLMType) and provider == LLMType.OPENAI):
+    if provider == "openai" or (isinstance(provider, LLMProvider) and provider == LLMProvider.OPENAI):
         if openai_api_key is None:
             openai_api_key = os.getenv("OPENAI_API_KEY")
         # Convert local file to base64 data URL for OpenAI
@@ -179,6 +180,27 @@ def get_prompt_from_schema(schema: type) -> str:
     )
 
 
+def person_detected_yolov8(image_path) -> bool:
+    """
+    Detects whether a person is present in the given image using YOLOv8.
+
+    Args:
+        image_path (str): Path to the image file to analyze.
+
+    Returns:
+        bool: True if a person is detected in the image, False otherwise.
+    """
+    model = YOLO('yolov8n.pt')
+    results = model(image_path)
+    for _result in results:
+        for box in _result.boxes:
+            class_id = int(box.cls[0])
+            class_name = model.names[class_id]
+            if class_name == 'person':
+                return True
+    return False
+
+
 # Example usage
 if __name__ == "__main__":
     IMAGE_PATH = './images/Screenshot-NoPerson.png'  # Replace with your image path
@@ -195,12 +217,12 @@ if __name__ == "__main__":
 
     # Use Ollama (local)
     # result = analyze_image(
-    #     IMAGE_PATH, provider=LLMType.OLLAMA, model=OLLAMA_MODEL, temperature=0)
+    #     IMAGE_PATH, provider=LLMProvider.OLLAMA, model=OLLAMA_MODEL, temperature=0)
     # logging.info("Ollama result: %s", result)
 
     # Use OpenAI (API key loaded from .env if not provided)
     result = analyze_image(
-        IMAGE_PATH, provider=LLMType.OPENAI, model=OPENAI_MODEL, temperature=0)
+        IMAGE_PATH, provider=LLMProvider.OPENAI, model=OPENAI_MODEL, temperature=0)
     logging.info("OpenAI result: %s", result)
 
     end_time = time.time()

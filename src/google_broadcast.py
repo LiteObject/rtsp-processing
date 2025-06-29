@@ -100,7 +100,7 @@ def main():
     Example usage of send_message_to_google_hub.
     """
     send_message_to_google_hub(
-        "Hello friends! How are you?", "192.168.7.38"
+        "Hello friend! How are you?", "192.168.7.38"
     )
 
 

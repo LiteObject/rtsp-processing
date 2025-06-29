@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class LLMType(Enum):
+class LLMProvider(Enum):
     """
     Enum for supported LLM providers.
     """
@@ -26,7 +26,7 @@ def get_llm(provider="ollama", openai_api_key=None, **kwargs):
     Factory method to return a LangChain LLM object for image processing.
 
     Args:
-        provider (str or LLMType): 'ollama', 'openai', LLMType.OLLAMA, or LLMType.OPENAI.
+        provider (str or LLMProvider): 'ollama', 'openai', LLMProvider.OLLAMA, or LLMProvider.OPENAI.
         openai_api_key (str): Your OpenAI API key if using OpenAI.
         kwargs: Additional model parameters (e.g., model name, temperature).
 
@@ -36,8 +36,8 @@ def get_llm(provider="ollama", openai_api_key=None, **kwargs):
     Raises:
         ValueError: If an unsupported provider is specified or OpenAI API key is missing.
     """
-    # Accept both string and LLMType enum for provider
-    if isinstance(provider, LLMType):
+    # Accept both string and LLMProvider enum for provider
+    if isinstance(provider, LLMProvider):
         provider = provider.value
     provider = str(provider).lower()
 
