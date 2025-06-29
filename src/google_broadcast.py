@@ -10,6 +10,30 @@ import urllib.parse
 import pychromecast
 
 
+class MediaStatusListener:
+    """
+    Listener for media status updates from the Chromecast device.
+    Tracks when the message starts and finishes playing.
+    """
+
+    def __init__(self):
+        """Initializes the MediaStatusListener."""
+        self.message_played = False
+
+    def new_media_status(self, status):
+        """
+        Callback for new media status events.
+
+        Args:
+            status: The media status object from pychromecast.
+        """
+        if status.player_state == "PLAYING":
+            logging.info("Message is now playing.")
+        elif status.player_state == "IDLE":
+            logging.info("Message playback has finished.")
+            self.message_played = True
+
+
 def send_message_to_google_hub(message, device_ip, volume=1.0):
     """
     Sends a text-to-speech message to a Google Hub (or compatible Chromecast device) 
@@ -39,29 +63,6 @@ def send_message_to_google_hub(message, device_ip, volume=1.0):
         target_device.wait()
         # Set volume to specified level
         target_device.set_volume(volume)
-
-        class MediaStatusListener:
-            """
-            Listener for media status updates from the Chromecast device.
-            Tracks when the message starts and finishes playing.
-            """
-
-            def __init__(self):
-                """Initializes the MediaStatusListener."""
-                self.message_played = False
-
-            def new_media_status(self, status):
-                """
-                Callback for new media status events.
-
-                Args:
-                    status: The media status object from pychromecast.
-                """
-                if status.player_state == "PLAYING":
-                    logging.info("Message is now playing.")
-                elif status.player_state == "IDLE":
-                    logging.info("Message playback has finished.")
-                    self.message_played = True
 
         listener = MediaStatusListener()
         target_device.media_controller.register_status_listener(listener)

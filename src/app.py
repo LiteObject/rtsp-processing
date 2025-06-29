@@ -44,7 +44,9 @@ def main(rtsp_url):
     while True:
         try:
             image_path = capture_image_from_rtsp(rtsp_url)
-            if image_path and person_detected_yolov8(image_path):
+            if not image_path:
+                logging.warning("Image capture failed (could not save image).")
+            elif person_detected_yolov8(image_path):
                 result: ImageAnalysisResult = analyze_image(
                     image_path, provider="openai", model="gpt-4o-mini")
                 if result["person_present"]:
@@ -58,9 +60,11 @@ def main(rtsp_url):
                     message = BROADCAST_MESSAGE_TEMPLATE.format(desc=desc)
                     send_message_to_google_hub(message, GOOGLE_DEVICE_IP)
                 else:
-                    logging.info("No person detected in the image.")
+                    logging.info(
+                        "No person detected in the image (LLM analysis).")
             else:
-                logging.warning("Image capture failed.")
+                logging.info(
+                    "No person detected in the image (YOLOv8 pre-filter).")
         except (IOError, ValueError) as e:
             logging.exception("Error in main loop: %s", e)
         except RuntimeError as e:
