@@ -74,6 +74,31 @@ Send a custom message to a Google Hub:
 python -m src.google_broadcast
 ```
 
+## System Architecture: Image Capture to Broadcast
+
+The following sequence diagram illustrates the main flow from image capture to Google Hub broadcast:
+
+```mermaid
+sequenceDiagram
+    participant Camera
+    participant App
+    participant YOLOv8
+    participant LLM
+    participant GoogleHub
+
+    Camera->>App: Stream RTSP video
+    App->>App: capture_image_from_rtsp()
+    App->>YOLOv8: person_detected_yolov8(image)
+    alt Person detected
+        App->>LLM: analyze_image(image)
+        LLM-->>App: ImageAnalysisResult
+        App->>GoogleHub: send_message_to_google_hub(message, device_ip)
+        GoogleHub-->>App: Broadcast confirmation
+    else No person detected
+        App->>App: Log 'No person detected'
+    end
+```
+
 ## File Overview
 - `src/app.py` — Main loop for capture, analysis, and broadcast
 - `src/image_capture.py` — Captures a single image from RTSP
