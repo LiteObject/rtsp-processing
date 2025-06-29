@@ -50,7 +50,7 @@ class RTSPProcessingService:
                 return False
 
         except (OSError, ValueError) as e:
-            self.logger.exception(f"Error processing frame: {e}")
+            self.logger.exception("Error processing frame: %s", e)
             return False
 
     def _handle_person_detected(self, image_path: str, result: ImageAnalysisResult):
@@ -72,6 +72,6 @@ class RTSPProcessingService:
         )
 
         if success:
-            self.logger.info(f"Broadcast sent: {message}")
+            self.logger.info("Broadcast sent: %s", message)
         else:
             self.logger.error("Failed to send broadcast")
