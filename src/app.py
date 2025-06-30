@@ -20,13 +20,21 @@ logging.basicConfig(
 
 
 def worker(service, q):
+    """
+    Worker thread function for processing images from the queue.
+    Each image path is processed by the RTSPProcessingService.
+
+    Args:
+        service (RTSPProcessingService): The service instance to process frames.
+        q (Queue): Queue from which image paths are received.
+    """
     while True:
         image_path = q.get()
         if image_path is None:
             break
         try:
             service.process_frame(image_path=image_path)
-        except Exception as e:
+        except (FileNotFoundError, ValueError, RuntimeError, OSError) as e:
             logging.exception("Worker error: %s", e)
         q.task_done()
 
