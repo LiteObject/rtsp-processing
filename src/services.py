@@ -53,7 +53,7 @@ class RTSPProcessingService:
             self.logger.exception("Error processing frame: %s", e)
             return False
 
-    def _handle_person_detected(self, image_path: str, result: ImageAnalysisResult):
+    def _handle_person_detected(self, image_path: str, result: ImageAnalysisResult) -> None:
         """Handle person detection event."""
         # Rename image file
         base, ext = os.path.splitext(image_path)

@@ -24,7 +24,7 @@ class LLMProvider(Enum):
     OPENAI = "openai"
 
 
-def get_llm(provider: str = "ollama", openai_api_key: str = None, **kwargs):
+def get_llm(provider: str = "ollama", openai_api_key: str | None = None, **kwargs) -> ChatOllama | ChatOpenAI:
     """
     Factory method to return a LangChain LLM object for image processing.
 

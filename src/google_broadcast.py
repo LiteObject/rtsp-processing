@@ -88,7 +88,7 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
             target_device.media_controller.play()
 
             while not listener.message_played:
-                time.sleep(1)
+                time.sleep(Config.SLEEP_INTERVAL)
             return True
         finally:
             target_device.media_controller.unregister_status_listener(listener)

@@ -42,6 +42,11 @@ class Config:
     CHROMECAST_TIMEOUT = int(os.getenv("CHROMECAST_TIMEOUT", "15"))
     MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
     RETRY_DELAY = float(os.getenv("RETRY_DELAY", "1.0"))
+    
+    # Magic Numbers
+    CV_BUFFER_SIZE = 1
+    SLEEP_INTERVAL = 1
+    TIMEOUT_MULTIPLIER = 1000
 
     @classmethod
     def validate(cls):

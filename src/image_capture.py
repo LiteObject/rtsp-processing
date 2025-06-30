@@ -13,7 +13,7 @@ import cv2
 from .config import Config
 
 
-def capture_image_from_rtsp(rtsp_url: str) -> str:
+def capture_image_from_rtsp(rtsp_url: str) -> str | None:
     """
     Captures a single image from the RTSP stream and saves it to the images folder.
 
@@ -24,8 +24,8 @@ def capture_image_from_rtsp(rtsp_url: str) -> str:
         str: The path of the saved image file, or None if capture failed.
     """
     cap = cv2.VideoCapture(rtsp_url)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-    cap.set(cv2.CAP_PROP_TIMEOUT, Config.RTSP_TIMEOUT * 1000)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, Config.CV_BUFFER_SIZE)
+    cap.set(cv2.CAP_PROP_TIMEOUT, Config.RTSP_TIMEOUT * Config.TIMEOUT_MULTIPLIER)
     try:
         if not cap.isOpened():
             logging.error("Could not open RTSP stream: %s", rtsp_url)

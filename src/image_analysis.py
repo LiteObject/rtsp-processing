@@ -54,7 +54,7 @@ class ImageAnalysisResult(TypedDict):
     description: str
 
 
-def _validate_image_path(image_path: str) -> tuple[bool, dict]:
+def _validate_image_path(image_path: str) -> tuple[bool, dict | None]:
     """Validate image path exists or is a URL."""
     if not os.path.exists(image_path) and not (
         image_path.startswith(
@@ -65,7 +65,7 @@ def _validate_image_path(image_path: str) -> tuple[bool, dict]:
     return True, None
 
 
-def _get_image_url(image_path: str, provider: str, openai_api_key: str) -> str:
+def _get_image_url(image_path: str, provider: str, openai_api_key: str | None) -> str:
     """Get appropriate image URL based on provider."""
     if provider == "openai" or (isinstance(provider, LLMProvider) and provider == LLMProvider.OPENAI):
         if openai_api_key is None:
@@ -78,7 +78,7 @@ def _get_image_url(image_path: str, provider: str, openai_api_key: str) -> str:
         return image_path
 
 
-def _call_llm(image_url: str, prompt: str, provider: str, openai_api_key: str, model: str, temperature: float) -> str:
+def _call_llm(image_url: str, prompt: str, provider: str, openai_api_key: str | None, model: str | None, temperature: float) -> str:
     """Call LLM with image and prompt with retry logic."""
     for attempt in range(Config.MAX_RETRIES):
         try:
