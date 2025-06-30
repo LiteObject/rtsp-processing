@@ -47,6 +47,10 @@ class Config:
     CV_BUFFER_SIZE = 1
     SLEEP_INTERVAL = 1
     TIMEOUT_MULTIPLIER = 1000
+    
+    # Security Settings
+    MAX_IMAGE_SIZE = int(os.getenv("MAX_IMAGE_SIZE", str(10 * 1024 * 1024)))  # 10MB
+    ALLOWED_IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp')
 
     @classmethod
     def validate(cls):

@@ -36,6 +36,10 @@ def image_to_base64_data_url(image_path: str) -> str:
     Returns:
         str: Data URL string suitable for OpenAI API.
     """
+    # File size validation
+    if os.path.getsize(image_path) > Config.MAX_IMAGE_SIZE:
+        raise ValueError("Image file too large")
+    
     ext = os.path.splitext(image_path)[1].lower()
     mime = "image/png" if ext == ".png" else "image/jpeg"
     with open(image_path, "rb") as img_file:
@@ -56,12 +60,21 @@ class ImageAnalysisResult(TypedDict):
 
 def _validate_image_path(image_path: str) -> tuple[bool, dict | None]:
     """Validate image path exists or is a URL."""
+    # Input validation
+    if not isinstance(image_path, str) or len(image_path) > 1000:
+        return False, {"person_present": None, "description": "Invalid image path"}
+    
+    # Check file extensions for security
+    if not (image_path.startswith(('http://', 'https://', 'data:')) or 
+            image_path.lower().endswith(Config.ALLOWED_IMAGE_EXTENSIONS)):
+        return False, {"person_present": None, "description": "Unsupported file type"}
+    
     if not os.path.exists(image_path) and not (
         image_path.startswith(
             "http://") or image_path.startswith("https://") or image_path.startswith("data:")
     ):
-        logging.error("Image file does not exist: %s", image_path)
-        return False, {"person_present": None, "description": f"Image file not found: {image_path}"}
+        logging.error("Image file does not exist")
+        return False, {"person_present": None, "description": "Image file not found"}
     return True, None
 
 

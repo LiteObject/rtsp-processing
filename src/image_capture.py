@@ -28,12 +28,12 @@ def capture_image_from_rtsp(rtsp_url: str) -> str | None:
     cap.set(cv2.CAP_PROP_TIMEOUT, Config.RTSP_TIMEOUT * Config.TIMEOUT_MULTIPLIER)
     try:
         if not cap.isOpened():
-            logging.error("Could not open RTSP stream: %s", rtsp_url)
+            logging.error("Could not open RTSP stream: [URL REDACTED]")
             return None
 
         ret, frame = cap.read()
         if not ret:
-            logging.error("Failed to capture frame from RTSP stream: %s", rtsp_url)
+            logging.error("Failed to capture frame from RTSP stream")
             return None
 
         images_dir = "images"
