@@ -1,3 +1,10 @@
+"""
+image_capture.py
+
+This module provides functionality to capture a single 
+image from an RTSP stream and save it to disk.
+"""
+
 import logging
 import os
 import time
@@ -35,19 +42,19 @@ def capture_image_from_rtsp(rtsp_url):
     images_dir = "images"
     os.makedirs(images_dir, exist_ok=True)
     image_name = f"capture_{int(time.time())}.jpg"
-    image_path = os.path.join(images_dir, image_name)
-    cv2.imwrite(image_path, frame)
-    print(f"Saved {image_path}")
+    saved_image_path = os.path.join(images_dir, image_name)
+    cv2.imwrite(saved_image_path, frame)
+    print(f"Saved {saved_image_path}")
 
     # Release the stream and close all OpenCV windows
     cap.release()
     cv2.destroyAllWindows()
-    return image_path
+    return saved_image_path
 
 
 # Example usage
 if __name__ == "__main__":
-    RTSP_URL = "rtsp://mvxfamily:P_9Pup3U!KY5-fc@192.168.7.254/stream2"
+    RTSP_URL = "rtsp://<USERNAME>:<PASSWORD>@192.168.7.25/stream2"
     image_path = capture_image_from_rtsp(RTSP_URL)
     if image_path:
         print(f"Image captured and saved as {image_path}")

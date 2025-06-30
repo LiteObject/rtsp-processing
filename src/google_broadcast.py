@@ -88,7 +88,7 @@ def send_message_to_google_hub(message, device_ip, volume=1.0):
     except pychromecast.error.PyChromecastError as e:
         logging.error("Chromecast error occurred: %s", e)
         return False
-    except (ValueError, AttributeError, TypeError) as e:
+    except (ValueError, AttributeError, TypeError, Exception) as e:
         logging.error("An unexpected error occurred: %s", e)
         return False
     finally:

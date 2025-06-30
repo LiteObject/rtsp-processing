@@ -10,10 +10,23 @@ import threading
 
 
 class YOLOv8ModelSingleton:
+    """
+    Singleton class for loading and providing access to a YOLOv8 model instance.
+    Ensures that the model is loaded only once per process, even in multithreaded environments.
+    """
     _instance = None
     _lock = threading.Lock()
 
     def __new__(cls, model_path='yolov8n.pt'):
+        """
+        Create or return the singleton instance of the YOLOv8 model.
+
+        Args:
+            model_path (str): Path to the YOLOv8 model weights file.
+
+        Returns:
+            YOLOv8ModelSingleton: The singleton instance containing the loaded model.
+        """
         if not cls._instance:
             with cls._lock:
                 if not cls._instance:
@@ -23,6 +36,12 @@ class YOLOv8ModelSingleton:
 
     @property
     def model(self):
+        """
+        Returns the loaded YOLOv8 model instance.
+
+        Returns:
+            YOLO: The loaded YOLOv8 model.
+        """
         return self._instance.model
 
 

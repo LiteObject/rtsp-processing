@@ -3,7 +3,6 @@ Service layer for business logic orchestration.
 """
 import logging
 import os
-from typing import Optional
 
 from .config import Config
 from .computer_vision import person_detected_yolov8

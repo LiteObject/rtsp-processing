@@ -1,15 +1,29 @@
-import pytest
+"""
+test_app.py
+
+Unit tests for the main application loop in src/app.py, 
+focusing on the threaded/queue-based architecture and shutdown logic.
+"""
+
 from unittest.mock import patch, MagicMock
 from src.app import main
 
 
 class TestApp:
+    """
+    Test suite for the main threaded/queue-based application loop in app.py.
+    """
+
     @patch('src.app.time.sleep')
     @patch('src.app.capture_image_from_rtsp')
     @patch('src.app.Queue')
     @patch('src.app.threading.Thread')
     @patch('src.app.RTSPProcessingService')
     def test_main_threaded_loop_keyboard_interrupt(self, mock_service_class, mock_thread, mock_queue, mock_capture, mock_sleep):
+        """
+        Test that the main loop handles KeyboardInterrupt correctly, shuts down the worker thread,
+        and sends the shutdown signal to the queue after capturing an image.
+        """
         # Setup
         mock_service = MagicMock()
         mock_service_class.return_value = mock_service
@@ -40,6 +54,10 @@ class TestApp:
     @patch('src.app.threading.Thread')
     @patch('src.app.RTSPProcessingService')
     def test_main_threaded_loop_handles_no_image(self, mock_service_class, mock_thread, mock_queue, mock_capture, mock_sleep):
+        """
+        Test that the main loop handles the case where no image is captured (capture returns None),
+        and still shuts down the worker thread and sends the shutdown signal to the queue.
+        """
         # Setup
         mock_service = MagicMock()
         mock_service_class.return_value = mock_service

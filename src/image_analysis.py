@@ -133,7 +133,7 @@ def _parse_llm_response(content) -> ImageAnalysisResult:
 
 
 def _handle_llm_error(e, error_type):
-    logging.exception(f"LLM call failed ({error_type})")
+    logging.exception("LLM call failed (%s)", error_type)
     return {"person_present": None, "description": f"LLM error: {e}"}
 
 
