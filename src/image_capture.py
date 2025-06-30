@@ -12,7 +12,7 @@ import time
 import cv2
 
 
-def capture_image_from_rtsp(rtsp_url):
+def capture_image_from_rtsp(rtsp_url: str) -> str:
     """
     Captures a single image from the RTSP stream and saves it to the images folder.
 
@@ -52,9 +52,13 @@ def capture_image_from_rtsp(rtsp_url):
     return saved_image_path
 
 
-# Example usage
-if __name__ == "__main__":
-    RTSP_URL = "rtsp://<USERNAME>:<PASSWORD>@192.168.7.25/stream2"
-    image_path = capture_image_from_rtsp(RTSP_URL)
+def main() -> None:
+    """Example usage of capture_image_from_rtsp."""
+    rtsp_url = "rtsp://<USERNAME>:<PASSWORD>@192.168.7.25/stream2"
+    image_path = capture_image_from_rtsp(rtsp_url)
     if image_path:
         print(f"Image captured and saved as {image_path}")
+
+
+if __name__ == "__main__":
+    main()

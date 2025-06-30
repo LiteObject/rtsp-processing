@@ -16,11 +16,11 @@ class MediaStatusListener:
     Tracks when the message starts and finishes playing.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initializes the MediaStatusListener."""
         self.message_played = False
 
-    def new_media_status(self, status):
+    def new_media_status(self, status) -> None:
         """
         Callback for new media status events.
 
@@ -34,7 +34,7 @@ class MediaStatusListener:
             self.message_played = True
 
 
-def send_message_to_google_hub(message, device_ip, volume=1.0):
+def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0) -> bool:
     """
     Sends a text-to-speech message to a Google Hub (or compatible Chromecast device) 
     at the specified IP address.
@@ -96,7 +96,7 @@ def send_message_to_google_hub(message, device_ip, volume=1.0):
         pychromecast.discovery.stop_discovery(browser)
 
 
-def main():
+def main() -> None:
     """
     Example usage of send_message_to_google_hub.
     """

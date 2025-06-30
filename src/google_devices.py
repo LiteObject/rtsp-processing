@@ -9,7 +9,7 @@ import logging
 import pychromecast
 
 
-def discover_google_devices():
+def discover_google_devices() -> list[dict]:
     """
     Discovers Google Chromecast and compatible devices on the local 
     network and returns their details.
@@ -42,7 +42,7 @@ def discover_google_devices():
     return devices
 
 
-def main():
+def main() -> None:
     """
     Example usage of discover_google_devices.
     """

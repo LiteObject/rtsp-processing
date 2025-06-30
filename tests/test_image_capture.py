@@ -81,7 +81,7 @@ class TestImageCapture:
     @patch('src.image_capture.cv2.imwrite')
     @patch('src.image_capture.os.makedirs')
     @patch('src.image_capture.time.time')
-    def test_capture_image_custom_timestamp(self, mock_time, mock_makedirs, mock_imwrite, mock_video_capture):
+    def test_capture_image_custom_timestamp(self, mock_time, _, mock_imwrite, mock_video_capture):
         """
         Test that capture_image_from_rtsp uses the correct timestamp in the saved image filename.
         """

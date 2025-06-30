@@ -1,1 +1,1 @@
-# src package init
+"""RTSP processing package for person detection and Google Hub broadcasting."""

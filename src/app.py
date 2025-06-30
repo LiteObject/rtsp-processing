@@ -19,7 +19,7 @@ logging.basicConfig(
 )
 
 
-def worker(service, q):
+def worker(service: 'RTSPProcessingService', q: Queue) -> None:
     """
     Worker thread function for processing images from the queue.
     Each image path is processed by the RTSPProcessingService.
@@ -39,7 +39,7 @@ def worker(service, q):
         q.task_done()
 
 
-def main():
+def main() -> None:
     """
     Main service loop for image capture, analysis, and broadcast using RTSPProcessingService.
     Uses a worker thread for non-blocking frame processing.

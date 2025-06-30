@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 
-def image_to_base64_data_url(image_path):
+def image_to_base64_data_url(image_path: str) -> str:
     """
     Convert a local image file to a base64-encoded data URL.
 
@@ -53,7 +53,8 @@ class ImageAnalysisResult(TypedDict):
     description: str
 
 
-def _validate_image_path(image_path):
+def _validate_image_path(image_path: str) -> tuple[bool, dict]:
+    """Validate image path exists or is a URL."""
     if not os.path.exists(image_path) and not (
         image_path.startswith(
             "http://") or image_path.startswith("https://") or image_path.startswith("data:")
@@ -63,7 +64,8 @@ def _validate_image_path(image_path):
     return True, None
 
 
-def _get_image_url(image_path, provider, openai_api_key):
+def _get_image_url(image_path: str, provider: str, openai_api_key: str) -> str:
+    """Get appropriate image URL based on provider."""
     if provider == "openai" or (isinstance(provider, LLMProvider) and provider == LLMProvider.OPENAI):
         if openai_api_key is None:
             openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -75,7 +77,8 @@ def _get_image_url(image_path, provider, openai_api_key):
         return image_path
 
 
-def _call_llm(image_url, prompt, provider, openai_api_key, model, temperature):
+def _call_llm(image_url: str, prompt: str, provider: str, openai_api_key: str, model: str, temperature: float) -> str:
+    """Call LLM with image and prompt."""
     llm = get_llm(provider=provider, openai_api_key=openai_api_key,
                   model=model, temperature=temperature)
     messages = [
@@ -90,7 +93,8 @@ def _call_llm(image_url, prompt, provider, openai_api_key, model, temperature):
     return content
 
 
-def _parse_llm_response(content) -> ImageAnalysisResult:
+def _parse_llm_response(content: str) -> ImageAnalysisResult:
+    """Parse LLM response into structured format."""
     # Handle Markdown code block wrapping (e.g., ```json ... ```
     if content.startswith('```'):
         # Remove code block markers and optional 'json' label
@@ -132,17 +136,18 @@ def _parse_llm_response(content) -> ImageAnalysisResult:
             return {"person_present": None, "description": content}
 
 
-def _handle_llm_error(e, error_type):
+def _handle_llm_error(e: Exception, error_type: str) -> dict:
+    """Handle LLM errors and return error response."""
     logging.exception("LLM call failed (%s)", error_type)
     return {"person_present": None, "description": f"LLM error: {e}"}
 
 
 def analyze_image(
-    image_path,
-    provider="ollama",
-    openai_api_key=None,
-    model=None,
-    temperature=0.1
+    image_path: str,
+    provider: str = "ollama",
+    openai_api_key: str = None,
+    model: str = None,
+    temperature: float = 0.1
 ) -> ImageAnalysisResult:
     """
     Analyze the image using the selected LLM provider (Ollama or OpenAI) and 
