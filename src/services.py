@@ -19,14 +19,15 @@ class RTSPProcessingService:
         self.logger = logging.getLogger(__name__)
         self.config = Config
 
-    def process_frame(self) -> bool:
+    def process_frame(self, image_path: str = None) -> bool:
         """Process single frame from RTSP stream."""
         try:
-            # Capture image
-            image_path = capture_image_from_rtsp(self.config.RTSP_URL)
+            # Capture image if not provided
             if not image_path:
-                self.logger.warning("Failed to capture image")
-                return False
+                image_path = capture_image_from_rtsp(self.config.RTSP_URL)
+                if not image_path:
+                    self.logger.warning("Failed to capture image")
+                    return False
 
             # Quick person detection with YOLOv8
             if not person_detected_yolov8(image_path, model_path=self.config.YOLO_MODEL_PATH):
