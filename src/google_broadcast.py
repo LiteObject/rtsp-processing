@@ -8,6 +8,7 @@ import time
 import logging
 import urllib.parse
 import pychromecast
+from .config import Config
 
 
 class MediaStatusListener:
@@ -47,16 +48,31 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
     Returns:
         bool: True if message was broadcast, False otherwise.
     """
-    chromecasts, browser = pychromecast.get_chromecasts()
-    try:
-        target_device = next(
-            (cc for cc in chromecasts if cc.cast_info.host == device_ip), None)
-        if not target_device:
-            logging.error("No Google device found with IP address: %s", device_ip)
-            return False
+    for attempt in range(Config.MAX_RETRIES):
+        try:
+            chromecasts, browser = pychromecast.get_chromecasts(timeout=Config.CHROMECAST_TIMEOUT)
+            target_device = next(
+                (cc for cc in chromecasts if cc.cast_info.host == device_ip), None)
+            if not target_device:
+                if attempt < Config.MAX_RETRIES - 1:
+                    logging.warning("Device not found (attempt %d/%d)", attempt + 1, Config.MAX_RETRIES)
+                    time.sleep(Config.RETRY_DELAY)
+                    continue
+                logging.error("No Google device found with IP address: %s", device_ip)
+                return False
 
-        target_device.wait()
-        target_device.set_volume(volume)
+            target_device.wait(timeout=Config.CHROMECAST_TIMEOUT)
+            target_device.set_volume(volume)
+            break
+        except (ConnectionError, TimeoutError) as e:
+            if attempt < Config.MAX_RETRIES - 1:
+                logging.warning("Chromecast connection failed (attempt %d/%d): %s", attempt + 1, Config.MAX_RETRIES, e)
+                time.sleep(Config.RETRY_DELAY * (2 ** attempt))
+            else:
+                logging.error("Failed to connect after %d attempts", Config.MAX_RETRIES)
+                return False
+    
+    try:
 
         listener = MediaStatusListener()
         target_device.media_controller.register_status_listener(listener)
@@ -80,11 +96,14 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
     except pychromecast.error.PyChromecastError as e:
         logging.error("Chromecast error occurred: %s", e)
         return False
-    except (ValueError, AttributeError, TypeError, Exception) as e:
+    except (ValueError, AttributeError, TypeError) as e:
         logging.error("An unexpected error occurred: %s", e)
         return False
     finally:
-        pychromecast.discovery.stop_discovery(browser)
+        try:
+            pychromecast.discovery.stop_discovery(browser)
+        except:
+            pass
 
 
 def main() -> None:

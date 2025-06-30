@@ -35,6 +35,13 @@ class Config:
     BROADCAST_MESSAGE_TEMPLATE = os.getenv(
         "BROADCAST_MESSAGE_TEMPLATE", "Person detected: {desc}")
     YOLO_MODEL_PATH = os.getenv("YOLO_MODEL_PATH", "yolov8n.pt")
+    
+    # Timeout and Retry Settings
+    RTSP_TIMEOUT = int(os.getenv("RTSP_TIMEOUT", "10"))
+    LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "30"))
+    CHROMECAST_TIMEOUT = int(os.getenv("CHROMECAST_TIMEOUT", "15"))
+    MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
+    RETRY_DELAY = float(os.getenv("RETRY_DELAY", "1.0"))
 
     @classmethod
     def validate(cls):

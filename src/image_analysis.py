@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
 
 from .llm_factory import LLMProvider, get_llm
+from .config import Config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -78,19 +79,27 @@ def _get_image_url(image_path: str, provider: str, openai_api_key: str) -> str:
 
 
 def _call_llm(image_url: str, prompt: str, provider: str, openai_api_key: str, model: str, temperature: float) -> str:
-    """Call LLM with image and prompt."""
-    llm = get_llm(provider=provider, openai_api_key=openai_api_key,
-                  model=model, temperature=temperature)
-    messages = [
-        HumanMessage(content=[
-            {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": image_url}}
-        ])
-    ]
-    response = llm.invoke(messages)
-    content = response.content.strip() if hasattr(
-        response, 'content') else str(response).strip()
-    return content
+    """Call LLM with image and prompt with retry logic."""
+    for attempt in range(Config.MAX_RETRIES):
+        try:
+            llm = get_llm(provider=provider, openai_api_key=openai_api_key,
+                          model=model, temperature=temperature)
+            messages = [
+                HumanMessage(content=[
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": image_url}}
+                ])
+            ]
+            response = llm.invoke(messages)
+            content = response.content.strip() if hasattr(
+                response, 'content') else str(response).strip()
+            return content
+        except (ConnectionError, TimeoutError) as e:
+            if attempt < Config.MAX_RETRIES - 1:
+                logging.warning("LLM call failed (attempt %d/%d): %s", attempt + 1, Config.MAX_RETRIES, e)
+                time.sleep(Config.RETRY_DELAY * (2 ** attempt))
+            else:
+                raise
 
 
 def _parse_llm_response(content: str) -> ImageAnalysisResult:

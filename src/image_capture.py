@@ -10,6 +10,7 @@ import os
 import time
 
 import cv2
+from .config import Config
 
 
 def capture_image_from_rtsp(rtsp_url: str) -> str:
@@ -23,6 +24,8 @@ def capture_image_from_rtsp(rtsp_url: str) -> str:
         str: The path of the saved image file, or None if capture failed.
     """
     cap = cv2.VideoCapture(rtsp_url)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    cap.set(cv2.CAP_PROP_TIMEOUT, Config.RTSP_TIMEOUT * 1000)
     try:
         if not cap.isOpened():
             logging.error("Could not open RTSP stream: %s", rtsp_url)
