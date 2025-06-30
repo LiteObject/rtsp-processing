@@ -1,253 +1,121 @@
 """
 image_analysis.py
 
-This module provides a function to analyze an image using either Ollama or OpenAI LLMs.
-It supports local file paths for Ollama and automatically encodes images as base64 data 
-URLs for OpenAI.
+Async image analysis using aiohttp for OpenAI API calls.
 """
-
+import asyncio
+import aiohttp
 import base64
 import json
 import logging
 import os
-import time
-from typing import TypedDict, Union
-
-from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage
+from typing import Dict, Any
 
 from .config import Config
-from .llm_factory import LLMProvider, get_llm
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-
-# Load environment variables from .env file
-load_dotenv()
 
 
-def image_to_base64_data_url(image_path: str) -> str:
+async def analyze_image_async(image_path: str, provider: str = "openai") -> Dict[str, Any]:
     """
-    Convert a local image file to a base64-encoded data URL.
-
+    Async version of image analysis using OpenAI API.
+    
     Args:
-        image_path (str): Path to the image file.
-
+        image_path (str): Path to image file
+        provider (str): LLM provider (only openai supported in this demo)
+        
     Returns:
-        str: Data URL string suitable for OpenAI API.
+        Dict containing person_present and description
     """
-    # File size validation
-    if os.path.getsize(image_path) > Config.MAX_IMAGE_SIZE:
-        raise ValueError("Image file too large")
+    if provider != "openai":
+        raise ValueError("Only OpenAI supported in async demo")
     
-    ext = os.path.splitext(image_path)[1].lower()
-    mime = "image/png" if ext == ".png" else "image/jpeg"
+    # Convert image to base64
     with open(image_path, "rb") as img_file:
-        data = img_file.read()
-        b64 = base64.b64encode(data).decode("utf-8")
-        # Clear data from memory
-        del data
-    return f"data:{mime};base64,{b64}"
-
-
-class ImageAnalysisResult(TypedDict):
-    """
-    TypedDict for the structured output of analyze_image.
-    Fields:
-        person_present (bool | None): Whether a person is present in the image.
-        description (str): Short description of the person or a message if no person is detected.
-    """
-    person_present: Union[bool, None]
-    description: str
-
-
-def _validate_image_path(image_path: str) -> tuple[bool, dict | None]:
-    """Validate image path exists or is a URL."""
-    # Input validation
-    if not isinstance(image_path, str) or len(image_path) > 1000:
-        return False, {"person_present": None, "description": "Invalid image path"}
+        b64_data = base64.b64encode(img_file.read()).decode()
     
-    # Check file extensions for security
-    if not (image_path.startswith(('http://', 'https://', 'data:')) or 
-            image_path.lower().endswith(Config.ALLOWED_IMAGE_EXTENSIONS)):
-        return False, {"person_present": None, "description": "Unsupported file type"}
+    data_url = f"data:image/jpeg;base64,{b64_data}"
     
-    if not os.path.exists(image_path) and not (
-        image_path.startswith(
-            "http://") or image_path.startswith("https://") or image_path.startswith("data:")
-    ):
-        logging.error("Image file does not exist")
-        return False, {"person_present": None, "description": "Image file not found"}
-    return True, None
-
-
-def _get_image_url(image_path: str, provider: str, openai_api_key: str | None) -> str:
-    """Get appropriate image URL based on provider."""
-    if provider == "openai" or (isinstance(provider, LLMProvider) and provider == LLMProvider.OPENAI):
-        if openai_api_key is None:
-            openai_api_key = os.getenv("OPENAI_API_KEY")
-        if not (image_path.startswith("http://") or image_path.startswith("https://") or image_path.startswith("data:")):
-            return image_to_base64_data_url(image_path)
-        else:
-            return image_path
-    else:
-        return image_path
-
-
-def _call_llm(image_url: str, prompt: str, provider: str, openai_api_key: str | None, model: str | None, temperature: float) -> str:
-    """Call LLM with image and prompt with retry logic."""
+    # Prepare API request
+    headers = {
+        "Authorization": f"Bearer {Config.OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": Config.DEFAULT_LLM_MODEL,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Respond ONLY with JSON: {\"person_present\": true/false, \"description\": \"brief description\"}"},
+                {"type": "image_url", "image_url": {"url": data_url}}
+            ]
+        }],
+        "temperature": Config.LLM_TEMPERATURE,
+        "max_tokens": 100
+    }
+    
+    # Async HTTP request with retry
     for attempt in range(Config.MAX_RETRIES):
         try:
-            llm = get_llm(provider=provider, openai_api_key=openai_api_key,
-                          model=model, temperature=temperature)
-            messages = [
-                HumanMessage(content=[
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": image_url}}
-                ])
-            ]
-            response = llm.invoke(messages)
-            content = response.content.strip() if hasattr(
-                response, 'content') else str(response).strip()
-            return content
-        except (ConnectionError, TimeoutError) as e:
+            timeout = aiohttp.ClientTimeout(total=Config.LLM_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers=headers,
+                    json=payload
+                ) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        content = result["choices"][0]["message"]["content"]
+                        return json.loads(content.strip())
+                    else:
+                        raise aiohttp.ClientError(f"API error: {response.status}")
+                        
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             if attempt < Config.MAX_RETRIES - 1:
-                logging.warning("LLM call failed (attempt %d/%d): %s", attempt + 1, Config.MAX_RETRIES, e)
-                time.sleep(Config.RETRY_DELAY * (2 ** attempt))
+                logging.warning("Async LLM call failed (attempt %d/%d): %s", attempt + 1, Config.MAX_RETRIES, e)
+                await asyncio.sleep(Config.RETRY_DELAY * (2 ** attempt))
             else:
                 raise
+    
+    return {"person_present": None, "description": "Analysis failed"}
 
 
-def _parse_llm_response(content: str) -> ImageAnalysisResult:
-    """Parse LLM response into structured format."""
-    # Handle Markdown code block wrapping (e.g., ```json ... ```
-    if content.startswith('```'):
-        # Remove code block markers and optional 'json' label
-        lines = content.splitlines()
-        if lines[0].strip().startswith('```'):
-            lines = lines[1:] if lines[0].strip() in (
-                '```', '```json') else lines
-        if lines and lines[-1].strip().startswith('```'):
-            lines = lines[:-1]
-        content = '\n'.join(lines).strip()
-    try:
-        # If content is already a dict, return it directly
-        if isinstance(content, dict):
-            return content
-        else:
-            return json.loads(content)
-    except json.JSONDecodeError:
-        # Try to parse again if the content is a quoted
-        # JSON string (double-encoded or with Python literals)
-        if isinstance(content, str) and ((content.startswith('{')
-                                          and content.endswith('}'))
-                                         or (content.startswith('[')
-                                             and content.endswith(']'))):
-            try:
-                # Replace Python literals with JSON equivalents
-                safe_content = content.replace("'", '"') \
-                    .replace('True', 'true') \
-                    .replace('False', 'false') \
-                    .replace('None', 'null')
-                return json.loads(safe_content)
-            except json.JSONDecodeError:
-                logging.error(
-                    "Failed to parse LLM response as JSON: %s", content)
-                return {"person_present": None,
-                        "description": content}
-        else:
-            logging.error(
-                "Failed to parse LLM response as JSON: %s", content)
-            return {"person_present": None, "description": content}
-
-
-def _handle_llm_error(e: Exception, error_type: str) -> dict:
-    """Handle LLM errors and return error response."""
-    logging.exception("LLM call failed (%s)", error_type)
-    return {"person_present": None, "description": f"LLM error: {e}"}
-
-
-def analyze_image(
-    image_path: str,
-    provider: str = "ollama",
-    openai_api_key: str = None,
-    model: str = None,
-    temperature: float = 0.1
-) -> ImageAnalysisResult:
+async def process_multiple_images_async(image_paths: list[str]) -> list[Dict[str, Any]]:
     """
-    Analyze the image using the selected LLM provider (Ollama or OpenAI) and 
-    return a structured description.
-
+    Process multiple images concurrently using async.
+    
     Args:
-        image_path (str): The path to the image to be analyzed.
-        provider (str or LLMType): 'ollama', 'openai', LLMType.OLLAMA, or LLMType.OPENAI.
-        openai_api_key (str): Your OpenAI API key if using OpenAI.
-        model (str, optional): Model name to use for the LLM provider.
-        temperature (float, optional): Sampling temperature for the LLM.
-
+        image_paths: List of image file paths
+        
     Returns:
-        ImageAnalysisResult: Structured output with keys 'person_present' (bool or None) 
-        and 'description' (str).
+        List of analysis results
     """
-    valid, error_result = _validate_image_path(image_path)
-    if not valid:
-        return error_result
-    image_url = _get_image_url(image_path, provider, openai_api_key)
-    prompt = get_prompt_from_schema(ImageAnalysisResult)
-    try:
-        content = _call_llm(image_url, prompt, provider,
-                            openai_api_key, model, temperature)
-        return _parse_llm_response(content)
-    except json.JSONDecodeError as e:
-        return _handle_llm_error(e, "JSONDecodeError")
-    except (TypeError, ValueError) as e:
-        return _handle_llm_error(e, "TypeError/ValueError")
-    except OSError as e:
-        return _handle_llm_error(e, "OSError")
+    tasks = [analyze_image_async(path) for path in image_paths]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Handle exceptions
+    processed_results = []
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            logging.error("Failed to process %s: %s", image_paths[i], result)
+            processed_results.append({"person_present": None, "description": "Processing failed"})
+        else:
+            processed_results.append(result)
+    
+    return processed_results
 
 
-def get_prompt_from_schema(schema: type) -> str:
-    """
-    Generate a prompt string for the LLM based on the schema (TypedDict) docstring and fields.
-    Args:
-        schema (type): The TypedDict class.
-    Returns:
-        str: Prompt string for the LLM.
-    """
-    fields = schema.__annotations__
-    example = {k: "..." for k in fields}
-    example_json = json.dumps(example)
-    doc = schema.__doc__ or ""
-    return (
-        f"Respond ONLY with a JSON object matching this structure: {example_json}. "
-        f"Fields: {doc.strip()}"
-    )
+# Demo usage
+async def demo_async_analysis():
+    """Demonstrate async image analysis."""
+    image_paths = ["images/test1.jpg", "images/test2.jpg", "images/test3.jpg"]
+    
+    # Process all images concurrently
+    results = await process_multiple_images_async(image_paths)
+    
+    for path, result in zip(image_paths, results):
+        print(f"{path}: {result}")
 
 
-# Example usage
 if __name__ == "__main__":
-    IMAGE_PATH = './images/Screenshot-NoPerson.png'  # Replace with your image path
-    start_time = time.time()
-
-    # Set default models if not provided
-    # For Ollama, ensure the model is pulled: ollama pull llava:latest
-    # (or use another installed vision model)
-    # Change to your preferred/installed local Ollama model
-    OLLAMA_MODEL = "llama3.2-vision:latest"
-    # For OpenAI, use the latest available vision model
-    # (see https://platform.openai.com/docs/models/gpt-4o)
-    OPENAI_MODEL = "gpt-4o-mini"  # Change to your preferred OpenAI model
-
-    # Use Ollama (local)
-    # result = analyze_image(
-    #     IMAGE_PATH, provider=LLMProvider.OLLAMA, model=OLLAMA_MODEL, temperature=0)
-    # logging.info("Ollama result: %s", result)
-
-    # Use OpenAI (API key loaded from .env if not provided)
-    result = analyze_image(
-        IMAGE_PATH, provider=LLMProvider.OPENAI, model=OPENAI_MODEL, temperature=0)
-    logging.info("OpenAI result: %s", result)
-
-    end_time = time.time()
-    execution_time = end_time - start_time
-    logging.info("Script execution time: %.2f seconds", execution_time)
+    asyncio.run(demo_async_analysis())

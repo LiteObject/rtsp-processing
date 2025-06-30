@@ -1,17 +1,19 @@
 """
 Service layer for business logic orchestration.
 """
+import asyncio
 import logging
 import os
+from typing import Dict, Any
 
 from .config import Config
 from .computer_vision import person_detected_yolov8
-from .image_analysis import analyze_image, ImageAnalysisResult
+from .image_analysis import analyze_image_async
 from .image_capture import capture_image_from_rtsp
 from .google_broadcast import send_message_to_google_hub
 
 
-class RTSPProcessingService:
+class AsyncRTSPProcessingService:
     """Main service for RTSP processing workflow."""
 
     def __init__(self):
@@ -19,16 +21,9 @@ class RTSPProcessingService:
         self.logger = logging.getLogger(__name__)
         self.config = Config
 
-    def process_frame(self, image_path: str = None) -> bool:
-        """Process single frame from RTSP stream."""
+    async def process_frame_async(self, image_path: str) -> bool:
+        """Process single frame asynchronously."""
         try:
-            # Capture image if not provided
-            if not image_path:
-                image_path = capture_image_from_rtsp(self.config.RTSP_URL)
-                if not image_path:
-                    self.logger.warning("Failed to capture image")
-                    return False
-
             # Quick person detection with YOLOv8
             if not person_detected_yolov8(image_path, model_path=self.config.YOLO_MODEL_PATH):
                 self.logger.info("No person detected (YOLOv8)")
@@ -39,16 +34,14 @@ class RTSPProcessingService:
                     pass
                 return False
 
-            # Detailed analysis with LLM
-            result = analyze_image(
+            # Async LLM analysis
+            result = await analyze_image_async(
                 image_path,
-                provider=self.config.DEFAULT_LLM_PROVIDER,
-                model=self.config.DEFAULT_LLM_MODEL,
-                temperature=self.config.LLM_TEMPERATURE
+                provider=self.config.DEFAULT_LLM_PROVIDER
             )
 
             if result["person_present"]:
-                self._handle_person_detected(image_path, result)
+                await self._handle_person_detected_async(image_path, result)
                 return True
             else:
                 self.logger.info("Person not confirmed by LLM")
@@ -59,11 +52,11 @@ class RTSPProcessingService:
                     pass
                 return False
 
-        except (OSError, ValueError) as e:
+        except Exception as e:
             self.logger.exception("Error processing frame: %s", e)
             return False
 
-    def _handle_person_detected(self, image_path: str, result: ImageAnalysisResult) -> None:
+    async def _handle_person_detected_async(self, image_path: str, result: Dict[str, Any]) -> None:
         """Handle person detection event."""
         # Rename image file
         base, ext = os.path.splitext(image_path)
