@@ -43,7 +43,10 @@ def image_to_base64_data_url(image_path: str) -> str:
     ext = os.path.splitext(image_path)[1].lower()
     mime = "image/png" if ext == ".png" else "image/jpeg"
     with open(image_path, "rb") as img_file:
-        b64 = base64.b64encode(img_file.read()).decode("utf-8")
+        data = img_file.read()
+        b64 = base64.b64encode(data).decode("utf-8")
+        # Clear data from memory
+        del data
     return f"data:{mime};base64,{b64}"
 
 

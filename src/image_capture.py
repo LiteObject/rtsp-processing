@@ -11,6 +11,7 @@ import time
 
 import cv2
 from .config import Config
+import glob
 
 
 def capture_image_from_rtsp(rtsp_url: str) -> str | None:
@@ -36,16 +37,31 @@ def capture_image_from_rtsp(rtsp_url: str) -> str | None:
             logging.error("Failed to capture frame from RTSP stream")
             return None
 
-        images_dir = "images"
-        os.makedirs(images_dir, exist_ok=True)
+        os.makedirs(Config.IMAGES_DIR, exist_ok=True)
         image_name = f"capture_{int(time.time())}.jpg"
-        saved_image_path = os.path.join(images_dir, image_name)
+        saved_image_path = os.path.join(Config.IMAGES_DIR, image_name)
         cv2.imwrite(saved_image_path, frame)
         print(f"Saved {saved_image_path}")
+        
+        # Cleanup old images to prevent disk space issues
+        _cleanup_old_images()
         return saved_image_path
     finally:
         cap.release()
         cv2.destroyAllWindows()
+
+
+def _cleanup_old_images() -> None:
+    """Remove old images to prevent disk space issues."""
+    try:
+        image_files = glob.glob(os.path.join(Config.IMAGES_DIR, "capture_*.jpg"))
+        if len(image_files) > Config.MAX_IMAGES:
+            # Sort by modification time and remove oldest
+            image_files.sort(key=os.path.getmtime)
+            for old_file in image_files[:-Config.MAX_IMAGES]:
+                os.remove(old_file)
+    except OSError:
+        pass  # Ignore cleanup errors
 
 
 def main() -> None:

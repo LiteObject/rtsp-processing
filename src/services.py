@@ -32,6 +32,11 @@ class RTSPProcessingService:
             # Quick person detection with YOLOv8
             if not person_detected_yolov8(image_path, model_path=self.config.YOLO_MODEL_PATH):
                 self.logger.info("No person detected (YOLOv8)")
+                # Clean up image if no person detected
+                try:
+                    os.remove(image_path)
+                except OSError:
+                    pass
                 return False
 
             # Detailed analysis with LLM
@@ -47,6 +52,11 @@ class RTSPProcessingService:
                 return True
             else:
                 self.logger.info("Person not confirmed by LLM")
+                # Clean up image if no person confirmed
+                try:
+                    os.remove(image_path)
+                except OSError:
+                    pass
                 return False
 
         except (OSError, ValueError) as e:
