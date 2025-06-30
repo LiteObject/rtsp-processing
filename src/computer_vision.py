@@ -14,7 +14,7 @@ class YOLOv8ModelSingleton:
     Singleton class for loading and providing access to a YOLOv8 model instance.
     Ensures that the model is loaded only once per process, even in multithreaded environments.
     """
-    _instance = None
+    _instances = {}
     _lock = threading.Lock()
 
     def __new__(cls, model_path='yolov8n.pt'):
@@ -27,12 +27,13 @@ class YOLOv8ModelSingleton:
         Returns:
             YOLOv8ModelSingleton: The singleton instance containing the loaded model.
         """
-        if not cls._instance:
+        if model_path not in cls._instances:
             with cls._lock:
-                if not cls._instance:
-                    cls._instance = super().__new__(cls)
-                    cls._instance.model = YOLO(model_path)
-        return cls._instance
+                if model_path not in cls._instances:
+                    instance = super().__new__(cls)
+                    instance._model = YOLO(model_path)
+                    cls._instances[model_path] = instance
+        return cls._instances[model_path]
 
     @property
     def model(self):
@@ -42,7 +43,7 @@ class YOLOv8ModelSingleton:
         Returns:
             YOLO: The loaded YOLOv8 model.
         """
-        return self._instance.model
+        return self._model
 
 
 def person_detected_yolov8(image_path, model_path='yolov8n.pt') -> bool:

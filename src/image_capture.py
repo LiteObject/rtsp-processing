@@ -22,34 +22,27 @@ def capture_image_from_rtsp(rtsp_url: str) -> str:
     Returns:
         str: The path of the saved image file, or None if capture failed.
     """
-    # Open the RTSP stream
     cap = cv2.VideoCapture(rtsp_url)
+    try:
+        if not cap.isOpened():
+            logging.error("Could not open RTSP stream: %s", rtsp_url)
+            return None
 
-    # Check if the stream was opened successfully
-    if not cap.isOpened():
-        logging.error("Could not open RTSP stream: %s", rtsp_url)
-        return None
+        ret, frame = cap.read()
+        if not ret:
+            logging.error("Failed to capture frame from RTSP stream: %s", rtsp_url)
+            return None
 
-    # Read a frame from the stream
-    ret, frame = cap.read()
-
-    if not ret:
-        logging.error("Failed to capture frame from RTSP stream: %s", rtsp_url)
+        images_dir = "images"
+        os.makedirs(images_dir, exist_ok=True)
+        image_name = f"capture_{int(time.time())}.jpg"
+        saved_image_path = os.path.join(images_dir, image_name)
+        cv2.imwrite(saved_image_path, frame)
+        print(f"Saved {saved_image_path}")
+        return saved_image_path
+    finally:
         cap.release()
-        return None
-
-    # Save the frame as an image in the images folder
-    images_dir = "images"
-    os.makedirs(images_dir, exist_ok=True)
-    image_name = f"capture_{int(time.time())}.jpg"
-    saved_image_path = os.path.join(images_dir, image_name)
-    cv2.imwrite(saved_image_path, frame)
-    print(f"Saved {saved_image_path}")
-
-    # Release the stream and close all OpenCV windows
-    cap.release()
-    cv2.destroyAllWindows()
-    return saved_image_path
+        cv2.destroyAllWindows()
 
 
 def main() -> None:
