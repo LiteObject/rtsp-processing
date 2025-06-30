@@ -9,8 +9,8 @@ import logging
 import time
 import threading
 from queue import Queue
-from src.services import RTSPProcessingService
-from src.image_capture import capture_image_from_rtsp
+from .services import RTSPProcessingService
+from .image_capture import capture_image_from_rtsp
 
 # Configure logging
 logging.basicConfig(

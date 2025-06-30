@@ -3,8 +3,9 @@ computer_vision.py
 
 This module provides computer vision utilities, including YOLOv8-based person detection.
 """
-from ultralytics import YOLO
 import threading
+
+from ultralytics import YOLO
 
 # Singleton YOLOv8 model loader
 

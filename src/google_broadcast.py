@@ -4,10 +4,12 @@ google_broadcast.py
 Broadcasts a text-to-speech message to a Google Hub or compatible Chromecast device.
 """
 
-import time
 import logging
+import time
 import urllib.parse
+
 import pychromecast
+
 from .config import Config
 
 
