@@ -42,13 +42,36 @@ class Config:
         Validates that all required configuration values are set.
         Raises a ValueError if any required configuration is missing.
         """
-        missing = []
+        errors = []
+        
+        # Required fields
         if not cls.RTSP_URL:
-            missing.append("RTSP_URL")
+            errors.append("RTSP_URL is required")
+        elif not cls.RTSP_URL.startswith(('rtsp://', 'http://', 'https://')):
+            errors.append("RTSP_URL must be a valid URL")
+            
         if not cls.GOOGLE_DEVICE_IP:
-            missing.append("GOOGLE_DEVICE_IP")
+            errors.append("GOOGLE_DEVICE_IP is required")
+            
         if cls.DEFAULT_LLM_PROVIDER == "openai" and not cls.OPENAI_API_KEY:
-            missing.append("OPENAI_API_KEY")
-        if missing:
-            raise ValueError(
-                f"Missing required configuration: {', '.join(missing)}")
+            errors.append("OPENAI_API_KEY is required for OpenAI provider")
+            
+        # Numeric range validation
+        if not 0.0 <= cls.BROADCAST_VOLUME <= 1.0:
+            errors.append("BROADCAST_VOLUME must be between 0.0 and 1.0")
+            
+        if not 0.0 <= cls.LLM_TEMPERATURE <= 2.0:
+            errors.append("LLM_TEMPERATURE must be between 0.0 and 2.0")
+            
+        if cls.CAPTURE_INTERVAL <= 0:
+            errors.append("CAPTURE_INTERVAL must be positive")
+            
+        if cls.MAX_IMAGES <= 0:
+            errors.append("MAX_IMAGES must be positive")
+            
+        # File path validation
+        if not os.path.exists(cls.YOLO_MODEL_PATH):
+            errors.append(f"YOLO model file not found: {cls.YOLO_MODEL_PATH}")
+            
+        if errors:
+            raise ValueError(f"Configuration validation failed: {'; '.join(errors)}")
