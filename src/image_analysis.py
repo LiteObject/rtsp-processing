@@ -10,7 +10,6 @@ import logging
 import os
 from typing import Any, Dict, TypedDict, Union
 
-import aiohttp
 from langchain_core.messages import HumanMessage
 
 from .config import Config
