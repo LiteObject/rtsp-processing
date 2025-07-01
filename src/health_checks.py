@@ -74,8 +74,8 @@ async def run_health_checks() -> Dict[str, bool]:
     
     for service, status in results.items():
         if status:
-            logging.info("✓ %s: healthy", service)
+            logging.info("[OK] %s: healthy", service)
         else:
-            logging.warning("✗ %s: unhealthy", service)
+            logging.warning("[FAIL] %s: unhealthy", service)
     
     return results

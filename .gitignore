@@ -76,3 +76,4 @@ Desktop.ini
 
 # Ignore images and output
 images/
+logs/

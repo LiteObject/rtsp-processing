@@ -29,7 +29,8 @@ logging.basicConfig(
         RotatingFileHandler(
             os.path.join(Config.LOG_DIR, 'rtsp_processing.log'),
             maxBytes=Config.LOG_MAX_BYTES,
-            backupCount=Config.LOG_BACKUP_COUNT
+            backupCount=Config.LOG_BACKUP_COUNT,
+            encoding='utf-8'
         )
     ]
 )
