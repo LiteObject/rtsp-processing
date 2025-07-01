@@ -15,6 +15,9 @@ from .services import AsyncRTSPProcessingService
 from .image_capture import capture_frame_from_rtsp
 from .health_checks import run_health_checks
 
+# Ensure logs directory exists first
+os.makedirs(Config.LOG_DIR, exist_ok=True)
+
 # Configure logging with rolling file handler
 from logging.handlers import RotatingFileHandler
 
@@ -24,15 +27,12 @@ logging.basicConfig(
     handlers=[
         logging.StreamHandler(),  # Console output
         RotatingFileHandler(
-            f'{Config.LOG_DIR}/rtsp_processing.log',
+            os.path.join(Config.LOG_DIR, 'rtsp_processing.log'),
             maxBytes=Config.LOG_MAX_BYTES,
             backupCount=Config.LOG_BACKUP_COUNT
         )
     ]
 )
-
-# Ensure logs directory exists
-os.makedirs(Config.LOG_DIR, exist_ok=True)
 
 
 async def main_async() -> None:
