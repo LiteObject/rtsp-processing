@@ -5,7 +5,7 @@ import asyncio
 import logging
 import cv2
 import aiohttp
-from typing import Dict, bool
+from typing import Dict
 
 from .config import Config
 
