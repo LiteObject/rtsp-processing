@@ -15,7 +15,7 @@ from .context_managers import RTSPCapture
 import glob
 
 
-def capture_image_from_rtsp(rtsp_url: str) -> str | None:
+def capture_frame_from_rtsp(rtsp_url: str) -> tuple[bool, any]:
     """
     Captures a single image from the RTSP stream and saves it to the images folder.
 
@@ -44,24 +44,14 @@ def capture_image_from_rtsp(rtsp_url: str) -> str | None:
         
         if not cap.isOpened():
             logging.error("Could not open RTSP stream: [URL REDACTED]")
-            return None
+            return False, None
 
         ret, frame = cap.read()
         if not ret:
             logging.error("Failed to capture frame from RTSP stream")
-            return None
+            return False, None
 
-        os.makedirs(Config.IMAGES_DIR, exist_ok=True)
-        image_name = f"capture_{int(time.time())}.jpg"
-        saved_image_path = os.path.join(Config.IMAGES_DIR, image_name)
-        cv2.imwrite(saved_image_path, frame)
-        logging.info("Image saved: %s", os.path.basename(saved_image_path))
-        logging.debug("Full image path: %s", saved_image_path)
-        
-        # Cleanup old images to prevent disk space issues
-        logging.debug("Running image cleanup")
-        _cleanup_old_images()
-        return saved_image_path
+        return True, frame
 
 
 def _cleanup_old_images() -> None:

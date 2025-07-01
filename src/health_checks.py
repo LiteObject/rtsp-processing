@@ -44,13 +44,32 @@ def check_rtsp_stream() -> bool:
         return False
 
 
+def check_chromecast_device() -> bool:
+    """Check if Chromecast device is reachable."""
+    if not Config.GOOGLE_DEVICE_IP:
+        logging.warning("Google device IP not configured")
+        return False
+    
+    try:
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5)
+        result = sock.connect_ex((Config.GOOGLE_DEVICE_IP, 8009))  # Chromecast port
+        sock.close()
+        return result == 0
+    except Exception as e:
+        logging.error("Chromecast health check failed: %s", e)
+        return False
+
+
 async def run_health_checks() -> Dict[str, bool]:
     """Run all health checks and return results."""
     logging.info("Running health checks...")
     
     results = {
         "rtsp_stream": check_rtsp_stream(),
-        "openai_api": await check_openai_api()
+        "openai_api": await check_openai_api(),
+        "chromecast_device": check_chromecast_device()
     }
     
     for service, status in results.items():

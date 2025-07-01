@@ -10,7 +10,7 @@ import logging
 import time
 
 from .services import AsyncRTSPProcessingService
-from .image_capture import capture_image_from_rtsp
+from .image_capture import capture_frame_from_rtsp
 from .health_checks import run_health_checks
 
 # Configure logging
@@ -34,10 +34,10 @@ async def main_async() -> None:
     
     try:
         while True:
-            image_path = capture_image_from_rtsp(service.config.RTSP_URL)
-            if image_path:
+            success, frame = capture_frame_from_rtsp(service.config.RTSP_URL)
+            if success and frame is not None:
                 # Process frame asynchronously without blocking
-                asyncio.create_task(service.process_frame_async(image_path))
+                asyncio.create_task(service.process_frame_async(frame))
             await asyncio.sleep(service.config.CAPTURE_INTERVAL)
     except KeyboardInterrupt:
         logging.info("Shutting down...")

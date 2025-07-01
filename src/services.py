@@ -7,9 +7,9 @@ import os
 from typing import Dict, Any
 
 from .config import Config
-from .computer_vision import person_detected_yolov8
+from .computer_vision import person_detected_yolov8_frame
 from .image_analysis import analyze_image_async
-from .image_capture import capture_image_from_rtsp
+from .image_capture import capture_frame_from_rtsp
 from .google_broadcast import send_message_to_google_hub
 
 
@@ -21,27 +21,27 @@ class AsyncRTSPProcessingService:
         self.logger = logging.getLogger(__name__)
         self.config = Config
 
-    async def process_frame_async(self, image_path: str) -> bool:
+    async def process_frame_async(self, frame) -> bool:
         """Process single frame asynchronously."""
         # Input validation
-        if not isinstance(image_path, str) or not image_path.strip():
-            self.logger.error("Invalid image path provided")
-            return False
-        
-        if not os.path.exists(image_path):
-            self.logger.error("Image file does not exist: %s", image_path)
+        if frame is None:
+            self.logger.error("Invalid frame provided")
             return False
         
         try:
             # Quick person detection with YOLOv8
-            if not person_detected_yolov8(image_path, model_path=self.config.YOLO_MODEL_PATH):
+            if not person_detected_yolov8_frame(frame, model_path=self.config.YOLO_MODEL_PATH):
                 self.logger.info("No person detected (YOLOv8)")
-                # Clean up image if no person detected
-                try:
-                    os.remove(image_path)
-                except OSError:
-                    pass
                 return False
+            
+            # Save frame to disk only when person detected
+            import time
+            import cv2
+            os.makedirs(self.config.IMAGES_DIR, exist_ok=True)
+            image_name = f"capture_{int(time.time())}.jpg"
+            image_path = os.path.join(self.config.IMAGES_DIR, image_name)
+            cv2.imwrite(image_path, frame)
+            logging.info("Image saved: %s", os.path.basename(image_path))
 
             # Async LLM analysis
             logging.debug("Starting LLM analysis for: %s", os.path.basename(image_path))

@@ -47,6 +47,28 @@ class YOLOv8ModelSingleton:
         return self._model
 
 
+def person_detected_yolov8_frame(frame, model_path='yolov8n.pt') -> bool:
+    """
+    Detects whether a person is present in the given cv2 frame using YOLOv8.
+
+    Args:
+        frame: cv2 image array.
+        model_path (str): Path to the YOLOv8 model weights file.
+
+    Returns:
+        bool: True if a person is detected in the frame, False otherwise.
+    """
+    model = YOLOv8ModelSingleton(model_path).model
+    results = model(frame)
+    for _result in results:
+        for box in _result.boxes:
+            class_id = int(box.cls[0])
+            class_name = model.names[class_id]
+            if class_name == 'person':
+                return True
+    return False
+
+
 def person_detected_yolov8(image_path, model_path='yolov8n.pt') -> bool:
     """
     Detects whether a person is present in the given image using YOLOv8.
