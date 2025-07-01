@@ -9,7 +9,6 @@ from logging.handlers import RotatingFileHandler
 import asyncio
 import logging
 import os
-import time
 
 from .config import Config
 from .services import AsyncRTSPProcessingService

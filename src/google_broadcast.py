@@ -126,15 +126,6 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
     except (ValueError, AttributeError, TypeError) as e:
         logging.error("An unexpected error occurred: %s", e)
         return False
-    except pychromecast.error.ChromecastConnectionError as e:
-        logging.error("Failed to connect to Chromecast device: %s", e)
-        return False
-    except pychromecast.error.PyChromecastError as e:
-        logging.error("Chromecast error occurred: %s", e)
-        return False
-    except (ValueError, AttributeError, TypeError) as e:
-        logging.error("An unexpected error occurred: %s", e)
-        return False
 
 
 def main() -> None:

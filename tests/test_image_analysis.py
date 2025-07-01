@@ -5,8 +5,10 @@ Unit tests for the image analysis logic in src/image_analysis.py,
 covering various LLM and file scenarios.
 """
 import asyncio
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
+
 from src.image_analysis import analyze_image_async
 
 

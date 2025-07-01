@@ -7,12 +7,11 @@ for image processing tasks. Supported providers include Ollama (local) and OpenA
 
 import os
 from enum import Enum
-import os
-from enum import Enum
 
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
+
 load_dotenv()
 
 

@@ -2,28 +2,28 @@
 image_capture.py
 
 This module provides functionality to capture a single 
-image from an RTSP stream and save it to disk.
+frame from an RTSP stream to memory.
 """
 
+import glob
 import logging
 import os
-import time
 
 import cv2
+
 from .config import Config
 from .context_managers import RTSPCapture
-import glob
 
 
 def capture_frame_from_rtsp(rtsp_url: str) -> tuple[bool, any]:
     """
-    Captures a single image from the RTSP stream and saves it to the images folder.
+    Captures a single frame from RTSP stream to memory (no disk save).
 
     Args:
         rtsp_url (str): The RTSP URL of the camera.
 
     Returns:
-        str: The path of the saved image file, or None if capture failed.
+        tuple: (success, frame) - frame is cv2 image array or None
     """
     # Input validation
     if not isinstance(rtsp_url, str) or not rtsp_url.strip():
@@ -74,11 +74,12 @@ def _cleanup_old_images() -> None:
 
 
 def main() -> None:
-    """Example usage of capture_image_from_rtsp."""
+    """Example usage of capture_frame_from_rtsp."""
     rtsp_url = "rtsp://<USERNAME>:<PASSWORD>@192.168.7.25/stream2"
-    image_path = capture_image_from_rtsp(rtsp_url)
+    success, frame = capture_frame_from_rtsp(rtsp_url)
     if success and frame is not None:
-        logging.info("Frame captured successfully: %dx%d", frame.shape[1], frame.shape[0])
+        logging.info("Frame captured successfully: %dx%d",
+                     frame.shape[1], frame.shape[0])
 
 
 if __name__ == "__main__":

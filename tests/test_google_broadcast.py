@@ -5,7 +5,6 @@ Unit tests for the Google Hub broadcast utility in src/google_broadcast.py.
 """
 from unittest.mock import Mock, patch
 
-import pychromecast
 from src.google_broadcast import send_message_to_google_hub
 
 
