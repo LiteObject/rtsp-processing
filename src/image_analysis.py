@@ -10,6 +10,7 @@ import logging
 import os
 from typing import Any, Dict, TypedDict, Union
 
+import aiohttp
 from langchain_core.messages import HumanMessage
 
 from .config import Config
@@ -95,6 +96,15 @@ async def analyze_image_async(
     # Use config default if no provider specified
     if not provider:
         provider = Config.DEFAULT_LLM_PROVIDER
+
+    # Provider validation (for now only OpenAI is supported)
+    if provider.lower() != "openai":
+        raise ValueError(
+            "Only OpenAI provider supported for async image analysis")
+
+    # Check if file exists
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"Image file not found: {image_path}")
 
     # Convert image to base64 data URL
     data_url = image_to_base64_data_url(image_path)
