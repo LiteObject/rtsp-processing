@@ -11,6 +11,7 @@ import time
 
 import cv2
 from .config import Config
+from .context_managers import RTSPCapture
 import glob
 
 
@@ -33,14 +34,14 @@ def capture_image_from_rtsp(rtsp_url: str) -> str | None:
         logging.error("RTSP URL must start with rtsp://, http://, or https://")
         return None
     
-    cap = cv2.VideoCapture(rtsp_url)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, Config.CV_BUFFER_SIZE)
-    # Note: CAP_PROP_TIMEOUT not available in all OpenCV versions
-    try:
-        cap.set(cv2.CAP_PROP_TIMEOUT, Config.RTSP_TIMEOUT * Config.TIMEOUT_MULTIPLIER)
-    except AttributeError:
-        pass
-    try:
+    with RTSPCapture(rtsp_url) as cap:
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, Config.CV_BUFFER_SIZE)
+        # Note: CAP_PROP_TIMEOUT not available in all OpenCV versions
+        try:
+            cap.set(cv2.CAP_PROP_TIMEOUT, Config.RTSP_TIMEOUT * Config.TIMEOUT_MULTIPLIER)
+        except AttributeError:
+            pass
+        
         if not cap.isOpened():
             logging.error("Could not open RTSP stream: [URL REDACTED]")
             return None
@@ -59,9 +60,6 @@ def capture_image_from_rtsp(rtsp_url: str) -> str | None:
         # Cleanup old images to prevent disk space issues
         _cleanup_old_images()
         return saved_image_path
-    finally:
-        cap.release()
-        cv2.destroyAllWindows()
 
 
 def _cleanup_old_images() -> None:

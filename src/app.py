@@ -11,6 +11,7 @@ import time
 
 from .services import AsyncRTSPProcessingService
 from .image_capture import capture_image_from_rtsp
+from .health_checks import run_health_checks
 
 # Configure logging
 logging.basicConfig(
@@ -23,6 +24,11 @@ async def main_async() -> None:
     """
     Main async service loop for image capture, analysis, and broadcast.
     """
+    # Run health checks before starting
+    health_results = await run_health_checks()
+    if not all(health_results.values()):
+        logging.warning("Some health checks failed, but continuing...")
+    
     service = AsyncRTSPProcessingService()
     logging.info("Starting async image capture and analysis system...")
     

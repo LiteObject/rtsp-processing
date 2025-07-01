@@ -54,6 +54,9 @@ class Config:
     
     # Directory Settings
     IMAGES_DIR = os.getenv("IMAGES_DIR", "images")
+    
+    # Health Check Settings
+    MAX_IMAGES = int(os.getenv("MAX_IMAGES", "100"))
 
     @classmethod
     def validate(cls):
