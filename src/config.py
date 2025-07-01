@@ -57,6 +57,11 @@ class Config:
     
     # Health Check Settings
     MAX_IMAGES = int(os.getenv("MAX_IMAGES", "100"))
+    
+    # Logging Settings
+    LOG_DIR = os.getenv("LOG_DIR", "logs")
+    LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", str(10 * 1024 * 1024)))  # 10MB
+    LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
 
     @classmethod
     def validate(cls):

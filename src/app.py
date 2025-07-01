@@ -23,15 +23,16 @@ logging.basicConfig(
     handlers=[
         logging.StreamHandler(),  # Console output
         RotatingFileHandler(
-            'logs/rtsp_processing.log',
-            maxBytes=10*1024*1024,  # 10MB
-            backupCount=5
+            f'{Config.LOG_DIR}/rtsp_processing.log',
+            maxBytes=Config.LOG_MAX_BYTES,
+            backupCount=Config.LOG_BACKUP_COUNT
         )
     ]
 )
 
 # Ensure logs directory exists
-os.makedirs('logs', exist_ok=True)
+from .config import Config
+os.makedirs(Config.LOG_DIR, exist_ok=True)
 
 
 async def main_async() -> None:
