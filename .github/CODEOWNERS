@@ -1,0 +1,9 @@
+# Global code ownership
+* @LiteObject
+
+# Specific ownership for critical files
+src/config.py @LiteObject
+src/services.py @LiteObject
+.env @LiteObject
+requirements.txt @LiteObject
+README.md @LiteObject
