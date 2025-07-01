@@ -26,7 +26,11 @@ def capture_image_from_rtsp(rtsp_url: str) -> str | None:
     """
     cap = cv2.VideoCapture(rtsp_url)
     cap.set(cv2.CAP_PROP_BUFFERSIZE, Config.CV_BUFFER_SIZE)
-    cap.set(cv2.CAP_PROP_TIMEOUT, Config.RTSP_TIMEOUT * Config.TIMEOUT_MULTIPLIER)
+    # Note: CAP_PROP_TIMEOUT not available in all OpenCV versions
+    try:
+        cap.set(cv2.CAP_PROP_TIMEOUT, Config.RTSP_TIMEOUT * Config.TIMEOUT_MULTIPLIER)
+    except AttributeError:
+        pass
     try:
         if not cap.isOpened():
             logging.error("Could not open RTSP stream: [URL REDACTED]")

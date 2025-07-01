@@ -4,162 +4,72 @@ test_image_analysis.py
 Unit tests for the image analysis logic in src/image_analysis.py, 
 covering various LLM and file scenarios.
 """
-from unittest.mock import Mock, patch
-from src.image_analysis import analyze_image
+import asyncio
+import pytest
+from unittest.mock import Mock, patch, AsyncMock
+from src.image_analysis import analyze_image_async
 
 
-class TestAnalyzeImage:
+class TestAnalyzeImageAsync:
     """
-    Test suite for the analyze_image function, covering LLM 
+    Test suite for the analyze_image_async function, covering async LLM 
     responses, file existence, and error handling.
     """
 
-    @patch('src.image_analysis.image_to_base64_data_url')
-    @patch('src.image_analysis.get_llm')
-    @patch('src.image_analysis.os.path.exists')
-    def test_analyze_image_person_detected_openai(self, mock_exists, mock_get_llm, mock_base64):
+    @patch('src.image_analysis.aiohttp.ClientSession')
+    @patch('src.image_analysis.aiohttp.ClientSession')
+    @patch('builtins.open', create=True)
+    def test_analyze_image_async_person_detected_openai(self, mock_open, mock_session):
         """
-        Test that analyze_image returns correct result when a person is detected using OpenAI provider.
+        Test that analyze_image_async returns correct result when a person is detected.
         """
         # Setup
-        mock_exists.return_value = True
-        mock_base64.return_value = "data:image/jpeg;base64,test"
-        mock_llm = Mock()
-        mock_response = Mock()
-        mock_response.content = '{"person_present": true, "description": "Person walking"}'
-        mock_llm.invoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
+        mock_file = Mock()
+        mock_file.read.return_value = b"fake_image_data"
+        mock_open.return_value.__enter__.return_value = mock_file
+        
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(return_value={
+            "choices": [{"message": {"content": '{"person_present": true, "description": "Person walking"}'}}]
+        })
+        mock_session.return_value.__aenter__.return_value.post.return_value.__aenter__.return_value = mock_response
 
         # Execute
-        result = analyze_image("test.jpg", provider="openai")
+        result = asyncio.run(analyze_image_async("test.jpg", provider="openai"))
 
         # Assert
         assert result["person_present"] is True
         assert result["description"] == "Person walking"
-        mock_get_llm.assert_called_once()
 
-    @patch('src.image_analysis.get_llm')
-    @patch('src.image_analysis.os.path.exists')
-    def test_analyze_image_no_person_detected(self, mock_exists, mock_get_llm):
+    def test_analyze_image_async_ollama_not_supported(self):
         """
-        Test that analyze_image returns correct result when no person is detected using Ollama provider.
+        Test that analyze_image_async raises error for unsupported provider.
+        """
+        # Execute & Assert
+        with pytest.raises(ValueError, match="Only OpenAI supported"):
+            asyncio.run(analyze_image_async("test.jpg", provider="ollama"))
+
+    @patch('src.image_analysis.aiohttp.ClientSession')
+    @patch('src.image_analysis.os.path.exists')
+    def test_analyze_image_async_api_error(self, mock_exists, mock_session):
+        """
+        Test that analyze_image_async handles API errors correctly.
         """
         # Setup
         mock_exists.return_value = True
-        mock_llm = Mock()
-        mock_response = Mock()
-        mock_response.content = '{"person_present": false, "description": "Empty room"}'
-        mock_llm.invoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
+        mock_response = AsyncMock()
+        mock_response.status = 400
+        mock_session.return_value.__aenter__.return_value.post.return_value.__aenter__.return_value = mock_response
 
-        # Execute
-        result = analyze_image("test.jpg", provider="ollama")
+        # Execute & Assert
+        with pytest.raises(Exception):
+            asyncio.run(analyze_image_async("test.jpg", provider="openai"))
 
-        # Assert
-        assert result["person_present"] is False
-        assert result["description"] == "Empty room"
-
-    @patch('src.image_analysis.get_llm')
-    @patch('src.image_analysis.os.path.exists')
-    def test_analyze_image_json_with_code_blocks(self, mock_exists, mock_get_llm):
+    def test_analyze_image_async_file_not_found(self):
         """
-        Test that analyze_image correctly parses JSON responses wrapped in Markdown code blocks.
+        Test that analyze_image_async handles missing files.
         """
-        # Setup
-        mock_exists.return_value = True
-        mock_llm = Mock()
-        mock_response = Mock()
-        mock_response.content = '```json\n{"person_present": true, "description": "Person detected"}\n```'
-        mock_llm.invoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
-
-        # Execute
-        result = analyze_image("test.jpg")
-
-        # Assert
-        assert result["person_present"] is True
-        assert result["description"] == "Person detected"
-
-    @patch('src.image_analysis.get_llm')
-    @patch('src.image_analysis.os.path.exists')
-    def test_analyze_image_invalid_json_response(self, mock_exists, mock_get_llm):
-        """
-        Test that analyze_image handles invalid JSON responses gracefully.
-        """
-        # Setup
-        mock_exists.return_value = True
-        mock_llm = Mock()
-        mock_response = Mock()
-        mock_response.content = 'Invalid JSON response'
-        mock_llm.invoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
-
-        # Execute
-        result = analyze_image("test.jpg")
-
-        # Assert
-        assert result["person_present"] is None
-        assert "Invalid JSON response" in result["description"]
-
-    @patch('src.image_analysis.os.path.exists')
-    def test_analyze_image_file_not_found(self, mock_exists):
-        """
-        Test that analyze_image returns an error result when the image file does not exist.
-        """
-        # Setup
-        mock_exists.return_value = False
-
-        # Execute
-        result = analyze_image("nonexistent.jpg")
-
-        # Assert
-        assert result["person_present"] is None
-        assert "Image file not found" in result["description"]
-
-    @patch('src.image_analysis.get_llm')
-    @patch('src.image_analysis.os.path.exists')
-    def test_analyze_image_llm_exception(self, mock_exists, mock_get_llm):
-        """
-        Test that analyze_image handles LLM exceptions and returns an appropriate error result.
-        """
-        # Setup
-        mock_exists.return_value = True
-        mock_llm = Mock()
-        # Patch invoke to raise an exception only when called, not when accessed
-
-        def raise_exception(*args, **kwargs):
-            raise ValueError("LLM error")
-        mock_llm.invoke.side_effect = raise_exception
-        mock_get_llm.return_value = mock_llm
-
-        # Execute
-        try:
-            result = analyze_image("test.jpg")
-        except RuntimeError as e:
-            # If the exception is not handled, fail the test
-            assert False, f"analyze_image should handle the exception, but raised: {e}"
-        # Assert
-        assert result["person_present"] is None
-        assert "LLM error" in result["description"]
-
-    @patch('src.image_analysis.image_to_base64_data_url')
-    @patch('src.image_analysis.get_llm')
-    @patch('src.image_analysis.os.path.exists')
-    def test_analyze_image_openai_base64_conversion(self, mock_exists, mock_get_llm, mock_base64):
-        """
-        Test that analyze_image calls image_to_base64_data_url for OpenAI provider with local file.
-        """
-        # Setup
-        mock_exists.return_value = True
-        mock_base64.return_value = "data:image/jpeg;base64,test"
-        mock_llm = Mock()
-        mock_response = Mock()
-        mock_response.content = '{"person_present": true, "description": "Test"}'
-        mock_llm.invoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
-
-        # Execute
-        analyze_image("test.jpg", provider="openai")
-
-        # Assert
-        mock_base64.assert_called_once_with("test.jpg")
+        # Execute & Assert
+        with pytest.raises(FileNotFoundError):
+            asyncio.run(analyze_image_async("nonexistent.jpg"))

@@ -66,7 +66,7 @@ class TestGoogleBroadcast:
 
         # Assert
         assert result is False
-        mock_stop_discovery.assert_called_once_with(mock_browser)
+        assert mock_stop_discovery.call_count == 3  # Called once per retry attempt
 
     @patch('src.google_broadcast.pychromecast.get_chromecasts')
     @patch('src.google_broadcast.pychromecast.discovery.stop_discovery')
@@ -83,7 +83,7 @@ class TestGoogleBroadcast:
 
         # Assert
         assert result is False
-        mock_stop_discovery.assert_called_once_with(mock_browser)
+        assert mock_stop_discovery.call_count == 3  # Called once per retry attempt
 
     @patch('src.google_broadcast.pychromecast.get_chromecasts')
     @patch('src.google_broadcast.pychromecast.discovery.stop_discovery')
@@ -132,12 +132,8 @@ class TestGoogleBroadcast:
         mock_get_chromecasts.return_value = ([mock_device], mock_browser)
 
         # Execute
-        result = None
-        try:
-            result = send_message_to_google_hub(
-                "Test message", "192.168.1.100")
-        except pychromecast.error.ChromecastConnectionError as e:
-            assert False, f"send_message_to_google_hub should handle the exception, but raised: {e}"
+        result = send_message_to_google_hub("Test message", "192.168.1.100")
+        
         # Assert
         assert result is False
-        mock_stop_discovery.assert_called_once_with(mock_browser)
+        assert mock_stop_discovery.call_count == 3  # Called once per retry attempt

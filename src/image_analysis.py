@@ -12,6 +12,60 @@ import os
 from typing import Dict, Any
 
 from .config import Config
+from typing import TypedDict, Union
+
+
+class ImageAnalysisResult(TypedDict):
+    """
+    TypedDict for the structured output of analyze_image.
+    Fields:
+        person_present (bool | None): Whether a person is present in the image.
+        description (str): Short description of the person or a message if no person is detected.
+    """
+    person_present: Union[bool, None]
+    description: str
+
+
+def image_to_base64_data_url(image_path: str) -> str:
+    """
+    Convert a local image file to a base64-encoded data URL.
+
+    Args:
+        image_path (str): Path to the image file.
+
+    Returns:
+        str: Data URL string suitable for OpenAI API.
+    """
+    # File size validation
+    if os.path.getsize(image_path) > Config.MAX_IMAGE_SIZE:
+        raise ValueError("Image file too large")
+    
+    ext = os.path.splitext(image_path)[1].lower()
+    mime = "image/png" if ext == ".png" else "image/jpeg"
+    with open(image_path, "rb") as img_file:
+        data = img_file.read()
+        b64 = base64.b64encode(data).decode("utf-8")
+        # Clear data from memory
+        del data
+    return f"data:{mime};base64,{b64}"
+
+
+def get_prompt_from_schema(schema: type) -> str:
+    """
+    Generate a prompt string for the LLM based on the schema (TypedDict) docstring and fields.
+    Args:
+        schema (type): The TypedDict class.
+    Returns:
+        str: Prompt string for the LLM.
+    """
+    fields = schema.__annotations__
+    example = {k: "..." for k in fields}
+    example_json = json.dumps(example)
+    doc = schema.__doc__ or ""
+    return (
+        f"Respond ONLY with a JSON object matching this structure: {example_json}. "
+        f"Fields: {doc.strip()}"
+    )
 
 
 async def analyze_image_async(image_path: str, provider: str = "openai") -> Dict[str, Any]:
