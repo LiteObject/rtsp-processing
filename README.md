@@ -8,8 +8,9 @@ High-performance async system that captures images from RTSP video streams, anal
 ## Features
 - **Async/await architecture** for 3x better performance
 - **RTSP stream capture** with automatic resource cleanup
-- **Two-stage detection** - YOLO for fast screening, OpenAI for detailed analysis
-- **Cost optimization** - Only sends images to OpenAI API when YOLO detects people
+- **Two-stage detection** - YOLO for fast screening, then LLM for detailed analysis
+- **Cost optimization** - Only processes images with LLM when YOLO detects people
+- **Flexible LLM support** - OpenAI API or local Ollama (llama3.2-vision) for zero cost
 - **Google Hub/Chromecast broadcasting** with device discovery
 - **Health checks** for external dependencies on startup
 - **Input validation** and structured logging throughout
@@ -20,8 +21,9 @@ High-performance async system that captures images from RTSP video streams, anal
 - Python 3.11+
 - RTSP-compatible camera or stream
 - Google Hub or Chromecast device on the same network
-- **OpenAI API key** (required for vision analysis)
-- Network connectivity for API calls
+- **LLM Provider** (choose one):
+  - OpenAI API key for cloud analysis
+  - [Ollama](https://ollama.com/) with `llama3.2-vision:latest` for local processing
 
 ### Python Packages
 Install all dependencies with:
@@ -50,9 +52,12 @@ Make sure all dependencies are installed before running tests.
 Copy `.env.example` to `.env` and configure:
 ```bash
 # Required
-OPENAI_API_KEY=your_openai_api_key_here
 RTSP_URL=rtsp://username:password@192.168.1.100/stream
 GOOGLE_DEVICE_IP=192.168.1.200
+
+# LLM Provider (choose one)
+OPENAI_API_KEY=your_openai_api_key_here  # For cloud analysis
+DEFAULT_LLM_PROVIDER=ollama              # For local processing
 
 # Optional
 IMAGES_DIR=images
@@ -180,9 +185,9 @@ For major changes, please open an issue first to discuss what you would like to 
 
 ## Notes
 
-### Requirements
-- **OpenAI API key** is required (no local LLM support in async version)
-- **Network connectivity** needed for OpenAI API calls
+### LLM Options
+- **OpenAI**: Cloud-based, requires API key and internet connectivity
+- **Ollama**: Local processing with `llama3.2-vision:latest`, zero API costs
 - **RTSP stream** must be accessible from the application
 
 ### Architecture Benefits
