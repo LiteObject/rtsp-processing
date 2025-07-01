@@ -56,8 +56,10 @@ def capture_image_from_rtsp(rtsp_url: str) -> str | None:
         saved_image_path = os.path.join(Config.IMAGES_DIR, image_name)
         cv2.imwrite(saved_image_path, frame)
         logging.info("Image saved: %s", os.path.basename(saved_image_path))
+        logging.debug("Full image path: %s", saved_image_path)
         
         # Cleanup old images to prevent disk space issues
+        logging.debug("Running image cleanup")
         _cleanup_old_images()
         return saved_image_path
 
@@ -66,13 +68,17 @@ def _cleanup_old_images() -> None:
     """Remove old images to prevent disk space issues."""
     try:
         image_files = glob.glob(os.path.join(Config.IMAGES_DIR, "capture_*.jpg"))
+        logging.debug("Found %d image files", len(image_files))
         if len(image_files) > Config.MAX_IMAGES:
             # Sort by modification time and remove oldest
             image_files.sort(key=os.path.getmtime)
-            for old_file in image_files[:-Config.MAX_IMAGES]:
+            files_to_remove = image_files[:-Config.MAX_IMAGES]
+            logging.debug("Removing %d old image files", len(files_to_remove))
+            for old_file in files_to_remove:
                 os.remove(old_file)
-    except OSError:
-        pass  # Ignore cleanup errors
+                logging.debug("Removed: %s", os.path.basename(old_file))
+    except OSError as e:
+        logging.warning("Image cleanup failed: %s", e)
 
 
 def main() -> None:
@@ -80,7 +86,7 @@ def main() -> None:
     rtsp_url = "rtsp://<USERNAME>:<PASSWORD>@192.168.7.25/stream2"
     image_path = capture_image_from_rtsp(rtsp_url)
     if image_path:
-        print(f"Image captured and saved as {image_path}")
+        logging.info("Image captured and saved: %s", os.path.basename(image_path))
 
 
 if __name__ == "__main__":

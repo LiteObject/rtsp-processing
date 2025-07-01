@@ -175,7 +175,7 @@ async def demo_async_analysis():
     results = await process_multiple_images_async(image_paths)
     
     for path, result in zip(image_paths, results):
-        print(f"{path}: {result}")
+        logging.debug("Processed %s: %s", path, result)
 
 
 if __name__ == "__main__":

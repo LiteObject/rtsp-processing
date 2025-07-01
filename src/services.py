@@ -44,10 +44,12 @@ class AsyncRTSPProcessingService:
                 return False
 
             # Async LLM analysis
+            logging.debug("Starting LLM analysis for: %s", os.path.basename(image_path))
             result = await analyze_image_async(
                 image_path,
                 provider=self.config.DEFAULT_LLM_PROVIDER
             )
+            logging.debug("LLM analysis result: %s", result)
 
             if result["person_present"]:
                 await self._handle_person_detected_async(image_path, result)
@@ -85,5 +87,7 @@ class AsyncRTSPProcessingService:
 
         if success:
             self.logger.info("Broadcast sent: %s", message)
+            self.logger.debug("Broadcast sent to device: %s", self.config.GOOGLE_DEVICE_IP)
         else:
             self.logger.error("Failed to send broadcast")
+            self.logger.debug("Broadcast failed for device: %s", self.config.GOOGLE_DEVICE_IP)
