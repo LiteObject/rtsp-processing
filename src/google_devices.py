@@ -46,6 +46,11 @@ def main() -> None:
     """
     Example usage of discover_google_devices.
     """
+    # Configure logging for standalone execution
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
     discover_google_devices()
 
 
