@@ -40,7 +40,7 @@ class MediaStatusListener:
 def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0) -> bool:
     """
     Sends a text-to-speech message to a Google Hub (or compatible Chromecast device) 
-    at the specified IP address.
+    with input validation at the specified IP address.
 
     Args:
         message (str): The message to broadcast as speech.
@@ -50,17 +50,34 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
     Returns:
         bool: True if message was broadcast, False otherwise.
     """
+
+    # Input validation
+    if not isinstance(message, str) or not message.strip():
+        logging.error("Invalid message provided")
+        return False
+
+    if not isinstance(device_ip, str) or not device_ip.strip():
+        logging.error("Invalid device IP provided")
+        return False
+
+    if not isinstance(volume, (int, float)) or not 0.0 <= volume <= 1.0:
+        logging.error("Volume must be between 0.0 and 1.0")
+        return False
+
     for attempt in range(Config.MAX_RETRIES):
         try:
-            chromecasts, browser = pychromecast.get_chromecasts(timeout=Config.CHROMECAST_TIMEOUT)
+            chromecasts, browser = pychromecast.get_chromecasts(
+                timeout=Config.CHROMECAST_TIMEOUT)
             target_device = next(
                 (cc for cc in chromecasts if cc.cast_info.host == device_ip), None)
             if not target_device:
                 if attempt < Config.MAX_RETRIES - 1:
-                    logging.warning("Device not found (attempt %d/%d)", attempt + 1, Config.MAX_RETRIES)
+                    logging.warning("Device not found (attempt %d/%d)",
+                                    attempt + 1, Config.MAX_RETRIES)
                     time.sleep(Config.RETRY_DELAY)
                     continue
-                logging.error("No Google device found with IP address: %s", device_ip)
+                logging.error(
+                    "No Google device found with IP address: %s", device_ip)
                 return False
 
             target_device.wait(timeout=Config.CHROMECAST_TIMEOUT)
@@ -68,18 +85,20 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
             break
         except (ConnectionError, TimeoutError, Exception) as e:
             if attempt < Config.MAX_RETRIES - 1:
-                logging.warning("Chromecast connection failed (attempt %d/%d): %s", attempt + 1, Config.MAX_RETRIES, e)
+                logging.warning(
+                    "Chromecast connection failed (attempt %d/%d): %s", attempt + 1, Config.MAX_RETRIES, e)
                 time.sleep(Config.RETRY_DELAY * (2 ** attempt))
                 continue
             else:
-                logging.error("Failed to connect after %d attempts", Config.MAX_RETRIES)
+                logging.error(
+                    "Failed to connect after %d attempts", Config.MAX_RETRIES)
                 return False
         finally:
             try:
                 pychromecast.discovery.stop_discovery(browser)
             except:
                 pass
-    
+
     try:
 
         listener = MediaStatusListener()

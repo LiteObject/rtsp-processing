@@ -23,6 +23,15 @@ class AsyncRTSPProcessingService:
 
     async def process_frame_async(self, image_path: str) -> bool:
         """Process single frame asynchronously."""
+        # Input validation
+        if not isinstance(image_path, str) or not image_path.strip():
+            self.logger.error("Invalid image path provided")
+            return False
+        
+        if not os.path.exists(image_path):
+            self.logger.error("Image file does not exist: %s", image_path)
+            return False
+        
         try:
             # Quick person detection with YOLOv8
             if not person_detected_yolov8(image_path, model_path=self.config.YOLO_MODEL_PATH):

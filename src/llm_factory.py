@@ -39,6 +39,10 @@ def get_llm(provider: str = "ollama", openai_api_key: str | None = None, **kwarg
     Raises:
         ValueError: If an unsupported provider is specified or OpenAI API key is missing.
     """
+    # Input validation
+    if not isinstance(provider, (str, LLMProvider)):
+        raise ValueError("Provider must be string or LLMProvider enum")
+    
     # Accept both string and LLMProvider enum for provider
     if isinstance(provider, LLMProvider):
         provider = provider.value

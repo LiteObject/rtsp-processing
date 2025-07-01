@@ -79,8 +79,15 @@ async def analyze_image_async(image_path: str, provider: str = "openai") -> Dict
     Returns:
         Dict containing person_present and description
     """
-    if provider != "openai":
-        raise ValueError("Only OpenAI supported in async demo")
+    # Input validation
+    if not isinstance(image_path, str) or not image_path.strip():
+        raise ValueError("Invalid image path provided")
+    
+    if not isinstance(provider, str) or provider != "openai":
+        raise ValueError("Only OpenAI provider supported")
+    
+    if not Config.OPENAI_API_KEY:
+        raise ValueError("OpenAI API key not configured")
     
     # Convert image to base64
     with open(image_path, "rb") as img_file:

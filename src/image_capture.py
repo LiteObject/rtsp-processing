@@ -24,6 +24,15 @@ def capture_image_from_rtsp(rtsp_url: str) -> str | None:
     Returns:
         str: The path of the saved image file, or None if capture failed.
     """
+    # Input validation
+    if not isinstance(rtsp_url, str) or not rtsp_url.strip():
+        logging.error("Invalid RTSP URL provided")
+        return None
+    
+    if not rtsp_url.startswith(('rtsp://', 'http://', 'https://')):
+        logging.error("RTSP URL must start with rtsp://, http://, or https://")
+        return None
+    
     cap = cv2.VideoCapture(rtsp_url)
     cap.set(cv2.CAP_PROP_BUFFERSIZE, Config.CV_BUFFER_SIZE)
     # Note: CAP_PROP_TIMEOUT not available in all OpenCV versions
@@ -45,7 +54,7 @@ def capture_image_from_rtsp(rtsp_url: str) -> str | None:
         image_name = f"capture_{int(time.time())}.jpg"
         saved_image_path = os.path.join(Config.IMAGES_DIR, image_name)
         cv2.imwrite(saved_image_path, frame)
-        print(f"Saved {saved_image_path}")
+        logging.info("Image saved: %s", os.path.basename(saved_image_path))
         
         # Cleanup old images to prevent disk space issues
         _cleanup_old_images()

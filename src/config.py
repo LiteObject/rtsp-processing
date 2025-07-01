@@ -51,6 +51,9 @@ class Config:
     # Security Settings
     MAX_IMAGE_SIZE = int(os.getenv("MAX_IMAGE_SIZE", str(10 * 1024 * 1024)))  # 10MB
     ALLOWED_IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp')
+    
+    # Directory Settings
+    IMAGES_DIR = os.getenv("IMAGES_DIR", "images")
 
     @classmethod
     def validate(cls):
