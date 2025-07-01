@@ -10,6 +10,7 @@ import logging
 import os
 import time
 
+from .config import Config
 from .services import AsyncRTSPProcessingService
 from .image_capture import capture_frame_from_rtsp
 from .health_checks import run_health_checks
@@ -31,7 +32,6 @@ logging.basicConfig(
 )
 
 # Ensure logs directory exists
-from .config import Config
 os.makedirs(Config.LOG_DIR, exist_ok=True)
 
 
