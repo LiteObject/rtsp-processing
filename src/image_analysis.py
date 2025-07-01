@@ -127,8 +127,20 @@ async def analyze_image_async(image_path: str, provider: str = "openai") -> Dict
                     if response.status == 200:
                         result = await response.json()
                         content = result["choices"][0]["message"]["content"]
-                        return json.loads(content.strip())
+                        if not content.strip():
+                            logging.error("Empty response from OpenAI API")
+                            continue
+                    
+                        try:
+                            return json.loads(content.strip())
+                        except json.JSONDecodeError as e:
+                            logging.error("Invalid JSON from OpenAI: %s", content[:100])
+                            continue
                     else:
+                        error_text = await response.text()
+                        logging.error("OpenAI API error %s: %s", response.status, error_text[:200])
+                        if attempt < Config.MAX_RETRIES - 1:
+                            continue
                         raise aiohttp.ClientError(f"API error: {response.status}")
                         
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:

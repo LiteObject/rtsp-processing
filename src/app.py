@@ -7,17 +7,31 @@ and broadcasting a message to a Google Hub device if a person is detected.
 
 import asyncio
 import logging
+import os
 import time
 
 from .services import AsyncRTSPProcessingService
 from .image_capture import capture_frame_from_rtsp
 from .health_checks import run_health_checks
 
-# Configure logging
+# Configure logging with rolling file handler
+from logging.handlers import RotatingFileHandler
+
 logging.basicConfig(
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    handlers=[
+        logging.StreamHandler(),  # Console output
+        RotatingFileHandler(
+            'logs/rtsp_processing.log',
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5
+        )
+    ]
 )
+
+# Ensure logs directory exists
+os.makedirs('logs', exist_ok=True)
 
 
 async def main_async() -> None:
