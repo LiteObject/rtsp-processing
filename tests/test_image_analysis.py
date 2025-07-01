@@ -16,14 +16,6 @@ class TestAnalyzeImageAsync:
     responses, file existence, and error handling.
     """
 
-    @patch('src.image_analysis.Config.OPENAI_API_KEY', 'test-key')
-    def test_analyze_image_async_person_detected_openai(self):
-        """
-        Test that analyze_image_async returns correct result when a person is detected.
-        """
-        # Skip this complex async test for now - integration test covers this
-        pytest.skip("Complex async mocking - covered by integration tests")
-
     def test_analyze_image_async_ollama_not_supported(self):
         """
         Test that analyze_image_async raises error for unsupported provider.
