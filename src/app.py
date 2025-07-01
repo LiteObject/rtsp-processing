@@ -5,6 +5,7 @@ Main application loop for capturing images from an RTSP stream, analyzing them f
 and broadcasting a message to a Google Hub device if a person is detected.
 """
 
+from logging.handlers import RotatingFileHandler
 import asyncio
 import logging
 import os
@@ -19,7 +20,6 @@ from .health_checks import run_health_checks
 os.makedirs(Config.LOG_DIR, exist_ok=True)
 
 # Configure logging with rolling file handler
-from logging.handlers import RotatingFileHandler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,10 +44,10 @@ async def main_async() -> None:
     health_results = await run_health_checks()
     if not all(health_results.values()):
         logging.warning("Some health checks failed, but continuing...")
-    
+
     service = AsyncRTSPProcessingService()
     logging.info("Starting async image capture and analysis system...")
-    
+
     try:
         while True:
             success, frame = capture_frame_from_rtsp(service.config.RTSP_URL)

@@ -5,13 +5,12 @@ Unit tests for the RTSP image capture utility in src/image_capture.py.
 """
 
 from unittest.mock import Mock, patch
-import os
-from src.image_capture import capture_image_from_rtsp
+from src.image_capture import capture_frame_from_rtsp
 
 
 class TestImageCapture:
     """
-    Test suite for the capture_image_from_rtsp function, covering success, failure, and custom timestamp scenarios.
+    Test suite for the capture_frame_from_rtsp function, covering success, failure, and custom timestamp scenarios.
     """
 
     @patch('src.image_capture.cv2.VideoCapture')
@@ -31,7 +30,7 @@ class TestImageCapture:
         mock_imwrite.return_value = True
 
         # Execute
-        result = capture_image_from_rtsp("rtsp://test.url")
+        result = capture_frame_from_rtsp("rtsp://test.url")
 
         # Assert
         assert result.endswith("capture_1234567890.jpg")
@@ -57,7 +56,8 @@ class TestImageCapture:
 
         # Assert
         assert result is None
-        mock_cap.release.assert_called_once()  # Release is always called in finally block
+        # Release is always called in finally block
+        mock_cap.release.assert_called_once()
 
     @patch('src.image_capture.cv2.VideoCapture')
     def test_capture_image_read_failed(self, mock_video_capture):

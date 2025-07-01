@@ -20,7 +20,7 @@ def discover_google_devices() -> list[dict]:
     logging.info("Searching for Google devices on the network...")
     chromecasts, browser = pychromecast.get_chromecasts()
     devices = []
-    
+
     if not chromecasts:
         logging.info("No Google devices found.")
     else:
@@ -37,7 +37,7 @@ def discover_google_devices() -> list[dict]:
             logging.info("Model: %s", device_info["model"])
             logging.info("UUID: %s", device_info["uuid"])
             logging.info("%s", "-" * 40)
-    
+
     pychromecast.discovery.stop_discovery(browser)
     return devices
 

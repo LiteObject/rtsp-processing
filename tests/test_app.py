@@ -24,14 +24,15 @@ class TestApp:
         Test that the async main loop handles KeyboardInterrupt correctly.
         """
         # Setup
-        mock_health_checks.return_value = {"rtsp_stream": True, "openai_api": True}
+        mock_health_checks.return_value = {
+            "rtsp_stream": True, "openai_api": True}
         mock_service = MagicMock()
         mock_service.config.RTSP_URL = "rtsp://test"
         mock_service.config.CAPTURE_INTERVAL = 1
         mock_service.process_frame_async = AsyncMock()
         mock_service_class.return_value = mock_service
         mock_capture.return_value = (True, "fake_frame")
-        
+
         # Simulate KeyboardInterrupt after first loop
         async def side_effect(*args, **kwargs):
             raise KeyboardInterrupt()
@@ -51,14 +52,15 @@ class TestApp:
         Test that the async main loop handles the case where no image is captured.
         """
         # Setup
-        mock_health_checks.return_value = {"rtsp_stream": True, "openai_api": True}
+        mock_health_checks.return_value = {
+            "rtsp_stream": True, "openai_api": True}
         mock_service = MagicMock()
         mock_service.config.RTSP_URL = "rtsp://test"
         mock_service.config.CAPTURE_INTERVAL = 1
         mock_service.process_frame_async = AsyncMock()
         mock_service_class.return_value = mock_service
         mock_capture.return_value = (False, None)  # Simulate failed capture
-        
+
         # Simulate KeyboardInterrupt after first loop
         async def side_effect(*args, **kwargs):
             raise KeyboardInterrupt()

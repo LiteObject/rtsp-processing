@@ -83,7 +83,7 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
             target_device.wait(timeout=Config.CHROMECAST_TIMEOUT)
             target_device.set_volume(volume)
             break
-        except (ConnectionError, TimeoutError, Exception) as e:
+        except (ConnectionError, TimeoutError, pychromecast.error.PyChromecastError) as e:
             if attempt < Config.MAX_RETRIES - 1:
                 logging.warning(
                     "Chromecast connection failed (attempt %d/%d): %s", attempt + 1, Config.MAX_RETRIES, e)
@@ -96,7 +96,7 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
         finally:
             try:
                 pychromecast.discovery.stop_discovery(browser)
-            except:
+            except (OSError, ValueError):
                 pass
 
     try:

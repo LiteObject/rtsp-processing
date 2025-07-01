@@ -133,7 +133,7 @@ class TestGoogleBroadcast:
 
         # Execute
         result = send_message_to_google_hub("Test message", "192.168.1.100")
-        
+
         # Assert
         assert result is False
         assert mock_stop_discovery.call_count == 3  # Called once per retry attempt

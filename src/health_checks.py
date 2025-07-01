@@ -3,6 +3,7 @@ Health checks for external dependencies.
 """
 import asyncio
 import logging
+import socket
 import cv2
 import aiohttp
 from typing import Dict
@@ -23,7 +24,7 @@ async def check_openai_api() -> bool:
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get("https://api.openai.com/v1/models", headers=headers) as response:
                 return response.status == 200
-    except Exception as e:
+    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as e:
         logging.error("OpenAI API health check failed: %s", e)
         return False
 
@@ -39,7 +40,7 @@ def check_rtsp_stream() -> bool:
         is_opened = cap.isOpened()
         cap.release()
         return is_opened
-    except Exception as e:
+    except (cv2.error, OSError, ValueError) as e:
         logging.error("RTSP stream health check failed: %s", e)
         return False
 
@@ -51,13 +52,12 @@ def check_chromecast_device() -> bool:
         return False
     
     try:
-        import socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(5)
         result = sock.connect_ex((Config.GOOGLE_DEVICE_IP, 8009))  # Chromecast port
         sock.close()
         return result == 0
-    except Exception as e:
+    except (OSError, socket.error, ValueError) as e:
         logging.error("Chromecast health check failed: %s", e)
         return False
 

@@ -35,32 +35,35 @@ class Config:
     BROADCAST_MESSAGE_TEMPLATE = os.getenv(
         "BROADCAST_MESSAGE_TEMPLATE", "Person detected: {desc}")
     YOLO_MODEL_PATH = os.getenv("YOLO_MODEL_PATH", "yolov8n.pt")
-    
+
     # Timeout and Retry Settings
     RTSP_TIMEOUT = int(os.getenv("RTSP_TIMEOUT", "10"))
     LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "30"))
     CHROMECAST_TIMEOUT = int(os.getenv("CHROMECAST_TIMEOUT", "15"))
     MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
     RETRY_DELAY = float(os.getenv("RETRY_DELAY", "1.0"))
-    
+
     # Magic Numbers
     CV_BUFFER_SIZE = 1
     SLEEP_INTERVAL = 1
     TIMEOUT_MULTIPLIER = 1000
-    
+
     # Security Settings
-    MAX_IMAGE_SIZE = int(os.getenv("MAX_IMAGE_SIZE", str(10 * 1024 * 1024)))  # 10MB
-    ALLOWED_IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp')
-    
+    MAX_IMAGE_SIZE = int(
+        os.getenv("MAX_IMAGE_SIZE", str(10 * 1024 * 1024)))  # 10MB
+    ALLOWED_IMAGE_EXTENSIONS = (
+        '.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp')
+
     # Directory Settings
     IMAGES_DIR = os.getenv("IMAGES_DIR", "images")
-    
+
     # Health Check Settings
     MAX_IMAGES = int(os.getenv("MAX_IMAGES", "100"))
-    
+
     # Logging Settings
     LOG_DIR = os.getenv("LOG_DIR", "logs")
-    LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", str(10 * 1024 * 1024)))  # 10MB
+    LOG_MAX_BYTES = int(
+        os.getenv("LOG_MAX_BYTES", str(10 * 1024 * 1024)))  # 10MB
     LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
 
     @classmethod
@@ -70,35 +73,36 @@ class Config:
         Raises a ValueError if any required configuration is missing.
         """
         errors = []
-        
+
         # Required fields
         if not cls.RTSP_URL:
             errors.append("RTSP_URL is required")
         elif not cls.RTSP_URL.startswith(('rtsp://', 'http://', 'https://')):
             errors.append("RTSP_URL must be a valid URL")
-            
+
         if not cls.GOOGLE_DEVICE_IP:
             errors.append("GOOGLE_DEVICE_IP is required")
-            
+
         if cls.DEFAULT_LLM_PROVIDER == "openai" and not cls.OPENAI_API_KEY:
             errors.append("OPENAI_API_KEY is required for OpenAI provider")
-            
+
         # Numeric range validation
         if not 0.0 <= cls.BROADCAST_VOLUME <= 1.0:
             errors.append("BROADCAST_VOLUME must be between 0.0 and 1.0")
-            
+
         if not 0.0 <= cls.LLM_TEMPERATURE <= 2.0:
             errors.append("LLM_TEMPERATURE must be between 0.0 and 2.0")
-            
+
         if cls.CAPTURE_INTERVAL <= 0:
             errors.append("CAPTURE_INTERVAL must be positive")
-            
+
         if cls.MAX_IMAGES <= 0:
             errors.append("MAX_IMAGES must be positive")
-            
+
         # File path validation
         if not os.path.exists(cls.YOLO_MODEL_PATH):
             errors.append(f"YOLO model file not found: {cls.YOLO_MODEL_PATH}")
-            
+
         if errors:
-            raise ValueError(f"Configuration validation failed: {'; '.join(errors)}")
+            raise ValueError(
+                f"Configuration validation failed: {'; '.join(errors)}")
