@@ -7,6 +7,7 @@ Utility to discover Google Chromecast and compatible devices on the local networ
 import logging
 
 import pychromecast
+from pychromecast import CastBrowser
 
 
 def discover_google_devices() -> list[dict]:
@@ -18,7 +19,9 @@ def discover_google_devices() -> list[dict]:
         list: List of device dictionaries with name, ip, model, and uuid
     """
     logging.info("Searching for Google devices on the network...")
-    chromecasts, browser = pychromecast.get_chromecasts()
+    browser = CastBrowser()
+    browser.start_discovery()
+    chromecasts = list(browser.devices.values())
     devices = []
 
     if not chromecasts:
@@ -38,7 +41,7 @@ def discover_google_devices() -> list[dict]:
             logging.info("UUID: %s", device_info["uuid"])
             logging.info("%s", "-" * 40)
 
-    pychromecast.discovery.stop_discovery(browser)
+    browser.stop_discovery()
     return devices
 
 
