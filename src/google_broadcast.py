@@ -18,11 +18,11 @@ from pychromecast.models import CastInfo, HostServiceInfo
 class CollectingCastListener(SimpleCastListener):
     """
     Custom listener for collecting Chromecast devices during discovery.
-    
+
     Extends SimpleCastListener to track discovered devices and provide
     access to device information through the browser's device registry.
     """
-    
+
     def __init__(self):
         """Initialize the listener with empty device list and service tracking."""
         super().__init__()
@@ -33,7 +33,7 @@ class CollectingCastListener(SimpleCastListener):
     def add_service(self, _zconf, _type_, name):
         """
         Called when a new mDNS service is discovered.
-        
+
         Args:
             _zconf: Zeroconf instance (unused)
             _type_: Service type (unused) 
@@ -45,10 +45,10 @@ class CollectingCastListener(SimpleCastListener):
     def add_cast(self, uuid, service):
         """
         Called when a new Chromecast device is discovered and resolved.
-        
+
         Creates a MockCast object for the discovered device and adds it
         to the devices list if not already present.
-        
+
         Args:
             uuid (str): Unique identifier for the device
             service: Service information (unused)
@@ -62,15 +62,15 @@ class CollectingCastListener(SimpleCastListener):
             class MockCast:
                 """
                 Mock Chromecast object that holds cast_info and uuid.
-                
+
                 Provides a lightweight representation of a discovered device
                 without establishing a full connection.
                 """
-                
+
                 def __init__(self, cast_info):
                     """
                     Initialize mock cast with device information.
-                    
+
                     Args:
                         cast_info: CastInfo object containing device details
                     """
@@ -89,7 +89,7 @@ class CollectingCastListener(SimpleCastListener):
     def remove_service(self, _zconf, _type_, name):
         """
         Called when an mDNS service is removed from the network.
-        
+
         Args:
             _zconf: Zeroconf instance (unused)
             _type_: Service type (unused)
@@ -100,7 +100,7 @@ class CollectingCastListener(SimpleCastListener):
     def update_service(self, _zconf, _type_, name):
         """
         Called when an mDNS service is updated.
-        
+
         Args:
             _zconf: Zeroconf instance (unused)
             _type_: Service type (unused)
@@ -136,15 +136,15 @@ class MediaStatusListener:
 def discover_all_chromecasts():
     """
     Discover and list all available Chromecast devices on the network.
-    
+
     Uses CastBrowser with a custom listener to discover Google Cast devices.
     Waits 15 seconds for comprehensive device discovery, which is optimized
     for Windows environments where mDNS discovery can be slower.
-    
+
     Returns:
         dict: Dictionary mapping device IP addresses to MockCast objects.
               Format: {ip_address: MockCast_object}
-              
+
     Note:
         If no devices are found, provides troubleshooting tips for common
         network configuration issues, especially on Windows systems.
@@ -285,11 +285,11 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
 def main() -> None:
     """
     Example usage and testing of google_broadcast functionality.
-    
+
     Demonstrates how to:
     1. Discover all available Chromecast devices on the network
     2. Send a text-to-speech message to a specific device by IP address
-    
+
     This function serves as both documentation and a testing entry point
     for the module's core functionality.
     """
