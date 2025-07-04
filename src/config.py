@@ -19,8 +19,10 @@ class Config:
     RTSP_URL = os.getenv("RTSP_URL")
     CAPTURE_INTERVAL = int(os.getenv("CAPTURE_INTERVAL", "10"))
 
-    # Google Hub Settings
+    # Notification Settings
+    NOTIFICATION_TARGET = os.getenv("NOTIFICATION_TARGET", "both")
     GOOGLE_DEVICE_IP = os.getenv("GOOGLE_DEVICE_IP")
+    GOOGLE_DEVICE_NAME = os.getenv("GOOGLE_DEVICE_NAME", "Kitchen display")
     BROADCAST_VOLUME = float(os.getenv("BROADCAST_VOLUME", "1.0"))
 
     # LLM Settings
