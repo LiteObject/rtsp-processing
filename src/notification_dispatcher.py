@@ -151,8 +151,11 @@ class GoogleHubProvider(NotificationProvider):
             logging.error(
                 "broadcast_message_direct not found or failed: %s", e)
             return False
-        except Exception as e:
-            logging.error("Unexpected error in Google Hub notification: %s", e)
+        except RuntimeError as e:
+            logging.error("Runtime error in Google Hub notification: %s", e)
+            return False
+        except ValueError as e:
+            logging.error("Value error in Google Hub notification: %s", e)
             return False
 
 
