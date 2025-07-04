@@ -239,6 +239,29 @@ class NotificationDispatcher:
         thread.daemon = True
         thread.start()
 
+    def dispatch_both_threaded(self, message: str):
+        """Dispatch notification to both targets simultaneously using separate threads.
+        This is much faster than using NotificationTarget.BOTH which runs sequentially.
+        Args:
+            message (str): The message to send to both targets.
+        Returns:
+            tuple: (local_future, google_future) - Future objects for both notifications.
+        """
+        local_future = None
+        google_future = None
+
+        if NotificationTarget.LOCAL_SPEAKER in self.providers:
+            local_future = self.executor.submit(
+                self.providers[NotificationTarget.LOCAL_SPEAKER].send_notification, message
+            )
+
+        if NotificationTarget.GOOGLE_HUB in self.providers:
+            google_future = self.executor.submit(
+                self.providers[NotificationTarget.GOOGLE_HUB].send_notification, message
+            )
+
+        return local_future, google_future
+
     def test_all_providers(self):
         """Test all configured notification providers.
         Returns:
@@ -286,11 +309,22 @@ def main():
     # 2. Asynchronous dispatch (non-blocking, returns Future)
     future = dispatcher.dispatch_async("Security alert: Motion detected")
     # You can check if it's done: future.done() or get result: future.result()
+    print(f"Async notification completed: {future.result()}")
 
     # 3. Threaded dispatch (fire and forget)
     dispatcher.dispatch_threaded("Weather update: It's sunny outside")
 
-    # 4. Duplicate filtering in action (this will be skipped if sent within 5 seconds)
+    # 4. OPTIMIZED: Send to both targets simultaneously (much faster than BOTH)
+    local_future, google_future = dispatcher.dispatch_both_threaded(
+        "Simultaneous notification test"
+    )
+    # Both notifications run in parallel - total time = max(local_time, google_time)
+    if local_future:
+        print(f"Local notification: {local_future.result()}")
+    if google_future:
+        print(f"Google notification: {google_future.result()}")
+
+    # 5. Duplicate filtering in action (this will be skipped if sent within 5 seconds)
     # Will be skipped
     dispatcher.dispatch("Person detected: Someone is at the door")
 
