@@ -93,7 +93,7 @@ class LocalSpeakerProvider(NotificationProvider):
             return False
 
     def _fallback_tts(self, message: str) -> bool:
-        """Fallback TTS using system commands.
+        """Fallback TTS using system commands with secure argument passing.
         Args:
             message (str): The message to speak.
         Returns:
@@ -103,17 +103,22 @@ class LocalSpeakerProvider(NotificationProvider):
         try:
             system = platform.system()
             if system == "Windows":
-                # PowerShell TTS
-                cmd = f'powershell -Command "Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak(\'{message}\')"'
-                subprocess.run(cmd, shell=True, check=True)
+                # SECURE: Use PowerShell with proper escaping
+                escaped_message = message.replace("'", "''")  # Escape single quotes for PowerShell
+                subprocess.run([
+                    "powershell", "-Command", 
+                    f"Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{escaped_message}')"
+                ], check=True, timeout=10)
             elif system == "Darwin":  # macOS
-                subprocess.run(["say", message], check=True)
+                # SECURE: Use argument list instead of shell=True
+                subprocess.run(["say", message], check=True, timeout=10)
             else:  # Linux
-                subprocess.run(["espeak", message], check=True)
+                # SECURE: Use argument list
+                subprocess.run(["espeak", message], check=True, timeout=10)
 
             logging.info("Fallback TTS notification sent: %s", message)
             return True
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
             logging.error("Fallback TTS failed: %s", e)
             return False
 
