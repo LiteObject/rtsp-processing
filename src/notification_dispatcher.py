@@ -104,9 +104,10 @@ class LocalSpeakerProvider(NotificationProvider):
             system = platform.system()
             if system == "Windows":
                 # SECURE: Use PowerShell with proper escaping
-                escaped_message = message.replace("'", "''")  # Escape single quotes for PowerShell
+                # Escape single quotes for PowerShell
+                escaped_message = message.replace("'", "''")
                 subprocess.run([
-                    "powershell", "-Command", 
+                    "powershell", "-Command",
                     f"Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{escaped_message}')"
                 ], check=True, timeout=10)
             elif system == "Darwin":  # macOS
@@ -126,14 +127,16 @@ class LocalSpeakerProvider(NotificationProvider):
 class GoogleHubProvider(NotificationProvider):
     """Google Hub/Chromecast TTS provider."""
 
-    def __init__(self, device_ip: str, friendly_name: str = "Google Device"):
+    def __init__(self, device_ip: str, friendly_name: str = "Google Device", volume: float = 1.0):
         """Initialize the Google Hub provider.
         Args:
             device_ip (str): The IP address of the Google Hub device.
             friendly_name (str): The friendly name of the device.
+            volume (float): The broadcast volume (0.0 to 1.0).
         """
         self.device_ip = device_ip
         self.friendly_name = friendly_name
+        self.volume = volume
 
     def send_notification(self, message: str) -> bool:
         """Send TTS notification to Google Hub.
@@ -145,7 +148,7 @@ class GoogleHubProvider(NotificationProvider):
         try:
             from .google_broadcast import send_message_to_google_hub
             success = send_message_to_google_hub(
-                message, self.device_ip, friendly_name=self.friendly_name)
+                message, self.device_ip, volume=self.volume, friendly_name=self.friendly_name)
             if success:
                 logging.info("Google Hub notification sent: %s", message)
             return success
@@ -167,19 +170,25 @@ class GoogleHubProvider(NotificationProvider):
 class NotificationDispatcher:
     """Main notification dispatcher that routes messages to configured targets."""
 
-    def __init__(self, google_device_ip: str = None, google_device_name: str = "Google Device"):
+    def __init__(self, google_device_ip: str = None, google_device_name: str = "Google Device", volume: float = None):
         """Initialize the notification dispatcher and configure providers.
         Args:
             google_device_ip (str, optional): The IP address of the Google Hub device.
             google_device_name (str, optional): The friendly name of the Google Hub device.
+            volume (float, optional): The broadcast volume. If None, uses config.BROADCAST_VOLUME.
         """
         self.providers = {
             NotificationTarget.LOCAL_SPEAKER: LocalSpeakerProvider()
         }
 
         if google_device_ip:
+            # Import config to get volume if not provided
+            if volume is None:
+                from .config import Config
+                volume = Config.BROADCAST_VOLUME
+
             self.providers[NotificationTarget.GOOGLE_HUB] = GoogleHubProvider(
-                google_device_ip, google_device_name
+                google_device_ip, google_device_name, volume
             )
 
         # Threading support for non-blocking notifications
