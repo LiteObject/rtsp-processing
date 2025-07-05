@@ -11,7 +11,11 @@ High-performance async system that captures images from RTSP video streams, anal
 - **Two-stage detection** - YOLO for fast screening, then LLM for detailed analysis
 - **Cost optimization** - Only processes images with LLM when YOLO detects people
 - **Flexible LLM support** - OpenAI API or local Ollama (llama3.2-vision) for zero cost
+- **Advanced notification system** with threading, duplicate filtering, and optimized TTS
+- **Cross-platform TTS** - Local speakers with pyttsx3 and system fallbacks
 - **Google Hub/Chromecast broadcasting** with device discovery
+- **Non-blocking notifications** - Threaded and async dispatch options
+- **Intelligent duplicate filtering** - Prevents repetitive announcements
 - **Health checks** for external dependencies on startup
 - **Input validation** and structured logging throughout
 - **Automatic image cleanup** to prevent disk space issues
@@ -21,6 +25,7 @@ High-performance async system that captures images from RTSP video streams, anal
 - Python 3.11+
 - RTSP-compatible camera or stream
 - Google Hub or Chromecast device on the same network
+- **Local speakers** for TTS notifications (optional)
 - **LLM Provider** (choose one):
   - OpenAI API key for cloud analysis
   - [Ollama](https://ollama.com/) with `llama3.2-vision:latest` for local processing
@@ -30,6 +35,13 @@ Install all dependencies with:
 ```sh
 pip install -r requirements.txt
 ```
+
+**Key dependencies:**
+- `pyttsx3` - Cross-platform text-to-speech engine
+- `opencv-python` - Image processing and RTSP capture
+- `ultralytics` - YOLOv8 object detection
+- `openai` - Vision API for image analysis
+- `pychromecast` - Google Hub/Chromecast communication
 
 ### Running Unit Tests
 Unit tests are provided in the `tests/` directory and use `pytest`.
@@ -83,19 +95,65 @@ python -m src.app
 - Broadcasts to Google Hub when person confirmed
 - Automatically cleans up old images
 
-### 2. Discover Google Devices
+### 2. Notification System
+
+The system includes an advanced notification dispatcher with multiple performance optimizations:
+
+#### Basic Usage
+```python
+from src.notification_dispatcher import NotificationDispatcher, NotificationTarget
+
+# Initialize with Google Hub (optional)
+dispatcher = NotificationDispatcher(
+    google_device_ip="192.168.1.200",
+    google_device_name="Kitchen Display"
+)
+
+# Send notifications to different targets
+dispatcher.dispatch("Person detected at front door", NotificationTarget.LOCAL_SPEAKER)
+dispatcher.dispatch("Security alert", NotificationTarget.GOOGLE_HUB)
+dispatcher.dispatch("Important message", NotificationTarget.BOTH)
+```
+
+#### Performance Features
+```python
+# Non-blocking notifications (recommended for real-time processing)
+dispatcher.dispatch_threaded("Person walking by")  # Fire-and-forget
+
+# Async notifications with result checking
+future = dispatcher.dispatch_async("Motion detected")
+# Continue processing...
+success = future.result()  # Check result when needed
+
+# Duplicate filtering (automatic)
+dispatcher.dispatch("Same message")  # First time: sent
+dispatcher.dispatch("Same message")  # Within 5 seconds: skipped
+```
+
+#### TTS Optimization
+- **Faster speech rate**: 200 WPM (33% faster than default)
+- **Cross-platform support**: Windows (pyttsx3), macOS (say), Linux (espeak)
+- **Automatic fallbacks**: System commands if pyttsx3 unavailable
+- **Voice optimization**: Uses best available voice on Windows
+
+#### Test Notifications
+```sh
+python -m src.notification_dispatcher
+```
+
+### 3. Discover Google Devices
 List all Google Hub/Chromecast devices on your network:
 ```sh
 python -m src.google_devices
 ```
 
-### 3. Manual Image Capture
+### 4. Manual Image Capture
 Capture a single image from an RTSP stream:
 ```sh
 python -m src.image_capture
 ```
 
-### 4. Manual Google Hub Broadcast
+### 5. Manual Google Hub Broadcast
 Send a custom message to a Google Hub:
 ```sh
 python -m src.google_broadcast
@@ -143,6 +201,7 @@ sequenceDiagram
 - `src/image_capture.py` — RTSP capture with context managers
 - `src/image_analysis.py` — Async OpenAI vision analysis
 - `src/computer_vision.py` — YOLOv8 person detection
+- `src/notification_dispatcher.py` — Advanced notification system with threading and TTS
 
 ### Infrastructure
 - `src/config.py` — Centralized configuration with validation
@@ -168,6 +227,9 @@ python -c "import logging; logging.basicConfig(level=logging.DEBUG)" -m src.app
 ### Key Metrics
 - **Processing Speed**: 3x faster than synchronous version
 - **Concurrent Processing**: Multiple images analyzed simultaneously
+- **Non-blocking Notifications**: Threaded dispatch prevents processing delays
+- **TTS Optimization**: 33% faster speech (200 WPM vs 150 WPM)
+- **Duplicate Filtering**: Intelligent suppression of repetitive messages
 - **Resource Management**: Automatic cleanup prevents memory/disk leaks
 - **Error Recovery**: Retry logic with exponential backoff
 - **Health Monitoring**: Startup validation of all dependencies
