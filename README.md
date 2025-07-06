@@ -92,9 +92,14 @@ All settings are centralized in `src/config.py` with validation and defaults.
 python -m src.app
 ```
 
-**With Real-time Web Dashboard**
+**UI Dashboard Only (No Background Processing)**
 ```bash
 python -m src.app --ui
+```
+
+**🔥 Background Processing + UI Dashboard (Recommended)**
+```bash
+python -m src.app --with-ui
 ```
 
 **What it does:**
@@ -105,6 +110,7 @@ python -m src.app --ui
 - Broadcasts to Google Hub when person confirmed
 - Automatically cleans up old images
 - **With UI**: Real-time dashboard at http://localhost:8501
+- **`--with-ui`**: Runs both background processing AND UI in a single command
 
 ### 2. Notification System
 

@@ -9,6 +9,7 @@ from logging.handlers import RotatingFileHandler
 import asyncio
 import logging
 import os
+import threading
 
 from .config import Config
 from .services import AsyncRTSPProcessingService
@@ -61,15 +62,47 @@ async def main_async() -> None:
 def main() -> None:
     """Main entry point with UI option."""
     import argparse
+    import threading
+    import subprocess
+    import sys
+    import os
+
     parser = argparse.ArgumentParser(description='RTSP Processing System')
     parser.add_argument('--ui', action='store_true',
-                        help='Launch with Streamlit GUI')
+                        help='Launch with Streamlit GUI only (no background processing)')
+    parser.add_argument('--with-ui', action='store_true',
+                        help='Launch background processing WITH Streamlit GUI')
     args = parser.parse_args()
 
-    if args.ui:
-        import subprocess
-        import sys
-        import os
+    if args.with_ui:
+        # Run both background processing and UI
+        logging.info("Starting RTSP processing with UI dashboard...")
+
+        # Start background processing in a separate thread
+        def run_background():
+            asyncio.run(main_async())
+
+        background_thread = threading.Thread(
+            target=run_background, daemon=True)
+        background_thread.start()
+
+        # Give background service a moment to start
+        import time
+        time.sleep(2)
+
+        # Get the root directory (parent of src)
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        # Change to root directory and run streamlit with proper module path
+        os.chdir(root_dir)
+        logging.info("Launching UI dashboard at http://localhost:8501")
+        subprocess.run([sys.executable, '-m', 'streamlit',
+                       'run', 'src/ui_dashboard.py'])
+
+    elif args.ui:
+        # UI only (original behavior)
+        logging.info(
+            "Launching UI dashboard only (no background processing)...")
 
         # Get the root directory (parent of src)
         root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -79,6 +112,7 @@ def main() -> None:
         subprocess.run([sys.executable, '-m', 'streamlit',
                        'run', 'src/ui_dashboard.py'])
     else:
+        # Background processing only (original behavior)
         asyncio.run(main_async())
 
 
