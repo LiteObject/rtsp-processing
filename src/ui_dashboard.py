@@ -91,7 +91,7 @@ def check_background_service_status():
                             return True
                     except ValueError:
                         continue
-        except Exception:
+        except (IOError, OSError, UnicodeDecodeError):
             pass
 
     return False

@@ -47,16 +47,39 @@ async def main_async() -> None:
 
     service = AsyncRTSPProcessingService()
     logging.info("Starting async image capture and analysis system...")
+    
+    active_tasks = set()
+    max_concurrent_tasks = 5
 
     try:
         while True:
+            # Clean up completed tasks
+            active_tasks = {task for task in active_tasks if not task.done()}
+            
             success, frame = capture_frame_from_rtsp(service.config.RTSP_URL)
             if success and frame is not None:
-                # Process frame asynchronously without blocking
-                asyncio.create_task(service.process_frame_async(frame))
+                # Limit concurrent tasks to prevent memory buildup
+                if len(active_tasks) < max_concurrent_tasks:
+                    task = asyncio.create_task(service.process_frame_async(frame))
+                    active_tasks.add(task)
+                else:
+                    logging.debug("Max concurrent tasks reached, skipping frame")
+                # Explicit frame cleanup
+                del frame
+                    
             await asyncio.sleep(service.config.CAPTURE_INTERVAL)
     except KeyboardInterrupt:
         logging.info("Shutting down...")
+    finally:
+        # Cancel remaining tasks
+        for task in active_tasks:
+            if not task.done():
+                task.cancel()
+        # Wait for cancellation to complete
+        if active_tasks:
+            await asyncio.gather(*active_tasks, return_exceptions=True)
+        # Clean up service resources
+        service.cleanup()
 
 
 def main() -> None:

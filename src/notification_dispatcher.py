@@ -295,9 +295,18 @@ class NotificationDispatcher:
 
     def cleanup(self):
         """Clean up resources including the thread pool executor."""
-        if hasattr(self, 'executor'):
+        if hasattr(self, 'executor') and self.executor:
             self.executor.shutdown(wait=True)
+            self.executor = None
             logging.info("Thread pool executor shut down")
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit with cleanup."""
+        self.cleanup()
 
     def __del__(self):
         """Destructor to ensure cleanup of resources."""

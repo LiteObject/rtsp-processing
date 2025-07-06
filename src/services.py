@@ -33,6 +33,11 @@ class AsyncRTSPProcessingService:
             google_device_ip=self.config.GOOGLE_DEVICE_IP,
             google_device_name=self.config.GOOGLE_DEVICE_NAME
         )
+    
+    def cleanup(self):
+        """Clean up service resources."""
+        if hasattr(self, 'dispatcher'):
+            self.dispatcher.cleanup()
 
     async def process_frame_async(self, frame) -> bool:
         """Process single frame asynchronously."""
@@ -85,6 +90,9 @@ class AsyncRTSPProcessingService:
         except (OSError, IOError, ValueError, RuntimeError) as e:
             self.logger.exception("Error processing frame: %s", e)
             return False
+        finally:
+            # Explicit frame cleanup to free memory
+            del frame
 
     async def _handle_person_detected_async(self, image_path: str, result: Dict[str, Any]) -> None:
         """Handle person detection event."""
