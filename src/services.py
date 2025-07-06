@@ -11,6 +11,7 @@ from .config import Config
 from .computer_vision import person_detected_yolov8_frame
 from .image_analysis import analyze_image_async
 from .notification_dispatcher import NotificationDispatcher, NotificationTarget
+from .event_broadcaster import broadcaster
 
 
 class AsyncRTSPProcessingService:
@@ -44,6 +45,7 @@ class AsyncRTSPProcessingService:
             # Quick person detection with YOLOv8
             if not person_detected_yolov8_frame(frame, model_path=self.config.YOLO_MODEL_PATH):
                 self.logger.info("No person detected (YOLOv8)")
+                broadcaster.emit('detection', {'status': 'no_person', 'method': 'YOLO'})
                 return False
 
             # Save frame to disk only when person detected
@@ -52,6 +54,7 @@ class AsyncRTSPProcessingService:
             image_path = os.path.join(self.config.IMAGES_DIR, image_name)
             cv2.imwrite(image_path, frame)
             logging.info("Image saved: %s", os.path.basename(image_path))
+            broadcaster.emit('image', {'path': image_path, 'status': 'saved'})
 
             # Async LLM analysis
             logging.debug("Starting LLM analysis for: %s",
@@ -63,10 +66,15 @@ class AsyncRTSPProcessingService:
             logging.debug("LLM analysis result: %s", result)
 
             if result["person_present"]:
+                broadcaster.emit('detection', {
+                    'status': 'person_confirmed', 
+                    'description': result.get('description', 'Unknown')
+                })
                 await self._handle_person_detected_async(image_path, result)
                 return True
             else:
                 self.logger.info("Person not confirmed by LLM")
+                broadcaster.emit('detection', {'status': 'person_not_confirmed', 'method': 'LLM'})
                 # Clean up image if no person confirmed
                 try:
                     os.remove(image_path)
@@ -91,6 +99,12 @@ class AsyncRTSPProcessingService:
             desc=description)
 
         success = self.dispatcher.dispatch(message, self.notification_target)
+        
+        broadcaster.emit('notification', {
+            'success': success,
+            'message': message,
+            'target': str(self.notification_target)
+        })
 
         if success:
             self.logger.info("Notification sent: %s", message)

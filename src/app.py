@@ -59,8 +59,27 @@ async def main_async() -> None:
 
 
 def main() -> None:
-    """Sync wrapper for backward compatibility."""
-    asyncio.run(main_async())
+    """Main entry point with UI option."""
+    import argparse
+    parser = argparse.ArgumentParser(description='RTSP Processing System')
+    parser.add_argument('--ui', action='store_true',
+                        help='Launch with Streamlit GUI')
+    args = parser.parse_args()
+
+    if args.ui:
+        import subprocess
+        import sys
+        import os
+
+        # Get the root directory (parent of src)
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        # Change to root directory and run streamlit with proper module path
+        os.chdir(root_dir)
+        subprocess.run([sys.executable, '-m', 'streamlit',
+                       'run', 'src/ui_dashboard.py'])
+    else:
+        asyncio.run(main_async())
 
 
 if __name__ == "__main__":

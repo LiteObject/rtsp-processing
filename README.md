@@ -42,6 +42,8 @@ pip install -r requirements.txt
 - `ultralytics` - YOLOv8 object detection
 - `openai` - Vision API for image analysis
 - `pychromecast` - Google Hub/Chromecast communication
+- `streamlit` - Real-time web dashboard
+- `streamlit` - Real-time web dashboard (optional UI)
 
 ### Running Unit Tests
 Unit tests are provided in the `tests/` directory and use `pytest`.
@@ -84,9 +86,17 @@ All settings are centralized in `src/config.py` with validation and defaults.
 ## Usage
 
 ### 1. Run Main Application
+
+**Command Line (Headless)**
 ```bash
 python -m src.app
 ```
+
+**With Real-time Web Dashboard**
+```bash
+python -m src.app --ui
+```
+
 **What it does:**
 - Runs health checks for RTSP stream and OpenAI API
 - Captures images from RTSP stream (configurable interval)
@@ -94,6 +104,7 @@ python -m src.app
 - Uses YOLO for fast person detection, then OpenAI for detailed analysis
 - Broadcasts to Google Hub when person confirmed
 - Automatically cleans up old images
+- **With UI**: Real-time dashboard at http://localhost:8501
 
 ### 2. Notification System
 
@@ -159,6 +170,33 @@ Send a custom message to a Google Hub:
 python -m src.google_broadcast
 ```
 
+### 6. Real-time Web Dashboard
+Launch the monitoring dashboard using any of these methods:
+
+**Option 1: Through main app (recommended)**
+```sh
+python -m src.app --ui
+```
+
+**Option 2: Direct Streamlit (from project root)**
+```sh
+streamlit run src/ui_dashboard.py
+```
+
+**Option 3: Using standalone runner**
+```sh
+streamlit run run_ui.py
+```
+
+**Dashboard Features:**
+- 📊 **Live Metrics** - Detection counts, image captures, activity status
+- 📸 **Image Gallery** - Latest captures with person detection highlights
+- 📋 **Event Stream** - Real-time detection events and notifications
+- 📄 **System Logs** - Live log tail with color-coded severity
+- 🔄 **Auto-refresh** - Updates every 2 seconds
+
+Access at: http://localhost:8501
+
 ## System Architecture: Async Processing Flow
 
 ```mermaid
@@ -189,6 +227,7 @@ sequenceDiagram
 
 **Key Improvements:**
 - **3x faster processing** with concurrent image analysis
+- **Real-time web dashboard** with live monitoring
 - **Health checks** prevent runtime failures
 - **Context managers** ensure proper resource cleanup
 - **Retry logic** with exponential backoff for network calls
@@ -196,12 +235,14 @@ sequenceDiagram
 ## File Overview
 
 ### Core Modules
-- `src/app.py` — Async main loop with health checks
+- `src/app.py` — Async main loop with health checks and UI launcher
 - `src/services.py` — AsyncRTSPProcessingService for business logic
 - `src/image_capture.py` — RTSP capture with context managers
 - `src/image_analysis.py` — Async OpenAI vision analysis
 - `src/computer_vision.py` — YOLOv8 person detection
 - `src/notification_dispatcher.py` — Advanced notification system with threading and TTS
+- `src/event_broadcaster.py` — Real-time event system for UI updates
+- `src/ui_dashboard.py` — Streamlit web dashboard for monitoring
 
 ### Infrastructure
 - `src/config.py` — Centralized configuration with validation
