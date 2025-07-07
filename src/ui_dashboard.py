@@ -50,6 +50,14 @@ def format_log_line_with_friendly_time(log_line):
     return log_line
 
 
+def format_datetime_friendly(dt):
+    """Convert datetime object to friendly 12-hour format."""
+    if dt is None:
+        return "None"
+    # Format to friendly 12-hour time (e.g., "6:45:30 PM")
+    return dt.strftime("%I:%M:%S %p").lstrip('0')
+
+
 def check_background_service_status():
     """Check if background processing service appears to be running."""
     # Method 1: Check for recent events (within last 2 minutes - reduced for faster detection)
@@ -176,8 +184,8 @@ def main():
     with metrics_col3:
         st.metric("Persons Confirmed", len(person_confirmed))
     with metrics_col4:
-        last_activity = events[0]['timestamp'].strftime(
-            "%H:%M:%S") if events else "None"
+        last_activity = format_datetime_friendly(
+            events[0]['timestamp']) if events else "None"
         st.metric("Last Activity", last_activity)
 
     # Main content area
@@ -209,7 +217,7 @@ def main():
                                     st.success(f"✅ Person Detected")
 
                                 st.image(
-                                    img_path, caption=f"{filename}\n{timestamp.strftime('%H:%M:%S')}")
+                                    img_path, caption=f"{filename}\n{format_datetime_friendly(timestamp)}")
                             except Exception as e:
                                 st.error(f"Error loading image: {e}")
                 else:
@@ -228,7 +236,8 @@ def main():
             event_container = st.container()
             with event_container:
                 for event in events[-15:]:  # Show last 15 events
-                    timestamp_str = event['timestamp'].strftime('%H:%M:%S')
+                    timestamp_str = format_datetime_friendly(
+                        event['timestamp'])
 
                     if event['type'] == 'detection':
                         status = event['data'].get('status', 'unknown')
