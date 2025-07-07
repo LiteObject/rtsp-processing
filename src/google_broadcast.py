@@ -293,7 +293,29 @@ def discover_all_chromecasts():
     Synchronous wrapper for discover_all_chromecasts_async.
     Use this when calling from non-async code.
     """
-    return asyncio.run(discover_all_chromecasts_async())
+    try:
+        # Check if we're already in an event loop
+        loop = asyncio.get_running_loop()
+        # If we are, we need to run in a thread to avoid "asyncio.run() cannot be called from a running event loop"
+        import concurrent.futures
+
+        def run_async():
+            # Create a new event loop for this thread
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                return new_loop.run_until_complete(discover_all_chromecasts_async())
+            finally:
+                new_loop.close()
+
+        # Run in a separate thread
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_async)
+            return future.result(timeout=30)  # 30 second timeout
+
+    except RuntimeError:
+        # No event loop running, safe to use asyncio.run()
+        return asyncio.run(discover_all_chromecasts_async())
 
 
 def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0, port: int = 8009, friendly_name: str = "Google Hub Device") -> bool:
@@ -301,7 +323,30 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
     Synchronous wrapper for send_message_to_google_hub_async.
     Use this when calling from non-async code.
     """
-    return asyncio.run(send_message_to_google_hub_async(message, device_ip, volume, port, friendly_name))
+    try:
+        # Check if we're already in an event loop
+        loop = asyncio.get_running_loop()
+        # If we are, we need to run in a thread to avoid "asyncio.run() cannot be called from a running event loop"
+        import concurrent.futures
+        import threading
+
+        def run_async():
+            # Create a new event loop for this thread
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                return new_loop.run_until_complete(send_message_to_google_hub_async(message, device_ip, volume, port, friendly_name))
+            finally:
+                new_loop.close()
+
+        # Run in a separate thread
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_async)
+            return future.result(timeout=30)  # 30 second timeout
+
+    except RuntimeError:
+        # No event loop running, safe to use asyncio.run()
+        return asyncio.run(send_message_to_google_hub_async(message, device_ip, volume, port, friendly_name))
 
 
 def main() -> None:
@@ -343,7 +388,7 @@ async def main_async() -> None:
                         format='%(asctime)s - %(levelname)s - %(message)s')
 
     # First, discover all available devices (optional)
-    await discover_all_chromecasts_async()
+    # await discover_all_chromecasts_async()
 
     # Then try to send message using direct broadcast
     success = await send_message_to_google_hub_async(
