@@ -22,6 +22,12 @@ except ImportError:
     from src.event_broadcaster import broadcaster
 
 
+@st.cache_data(ttl=2)  # Cache for 2 seconds to reduce load
+def get_cached_events():
+    """Get events with caching to improve performance."""
+    return broadcaster.get_recent_events(100)
+
+
 def format_log_line_with_friendly_time(log_line):
     """Convert log line timestamp to friendly 12-hour format."""
     # Pattern to match log timestamp: YYYY-MM-DD HH:MM:SS,mmm
@@ -156,6 +162,8 @@ def main():
     # Auto-refresh toggle
     if 'auto_refresh' not in st.session_state:
         st.session_state.auto_refresh = True
+    if 'last_refresh' not in st.session_state:
+        st.session_state.last_refresh = time.time()
 
     # Control panel
     col1, col2, col3 = st.columns([1, 1, 4])
@@ -164,10 +172,24 @@ def main():
             st.rerun()
     with col2:
         st.session_state.auto_refresh = st.checkbox(
-            "Auto-refresh", value=st.session_state.auto_refresh)
+            "Auto-refresh (2s)", value=st.session_state.auto_refresh)
+        if st.session_state.auto_refresh:
+            # Show refresh indicator
+            refresh_placeholder = st.empty()
+            current_time = time.time()
+            time_since_refresh = current_time - st.session_state.last_refresh
+            refresh_placeholder.caption(
+                f"🔄 Next refresh in {max(0, 2.0 - time_since_refresh):.1f}s")
+
+    # Non-blocking auto-refresh check
+    if st.session_state.auto_refresh:
+        current_time = time.time()
+        if current_time - st.session_state.last_refresh >= 2.0:
+            st.session_state.last_refresh = current_time
+            st.rerun()
 
     # Get recent events
-    events = broadcaster.get_recent_events(100)
+    events = get_cached_events()
 
     # Metrics row
     metrics_col1, metrics_col2, metrics_col3, metrics_col4 = st.columns(4)
@@ -308,11 +330,6 @@ def main():
                 st.error(f"Error reading log file: {e}")
         else:
             st.info("Log file not found")
-
-    # Auto-refresh
-    if st.session_state.auto_refresh:
-        time.sleep(2)
-        st.rerun()
 
 
 if __name__ == "__main__":
