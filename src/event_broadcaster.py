@@ -12,12 +12,16 @@ from datetime import datetime
 class EventBroadcaster:
     """Thread-safe event broadcaster for real-time UI updates."""
 
-    def __init__(self, max_events: int = 100, persist_file: str = "events.json"):
+    def __init__(self, max_events: int = 100, persist_file: str = "events.json",
+                 batch_interval: float = 2.0):
         self.events = collections.deque(maxlen=max_events)
         self._lock = threading.Lock()
         self.persist_file = persist_file
         self.max_events = max_events
         self._last_load_time = 0
+        self._batch_interval = batch_interval
+        self._persist_timer = None
+        self._dirty = False
         self._load_persisted_events()
 
     def _load_persisted_events(self):
@@ -43,7 +47,7 @@ class EventBroadcaster:
                 self.events.append(event_data)
 
             self._last_load_time = file_mtime
-        except (json.JSONDecodeError, KeyError, ValueError, OSError) as e:
+        except (json.JSONDecodeError, KeyError, ValueError, OSError):
             # If file is corrupted or invalid, start fresh
             pass
 
@@ -64,7 +68,7 @@ class EventBroadcaster:
 
             with open(self.persist_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-        except (OSError, TypeError) as e:
+        except (OSError, TypeError):
             # If persistence fails, continue without it
             pass
 
@@ -77,7 +81,8 @@ class EventBroadcaster:
         }
         with self._lock:
             self.events.append(event)
-            self._persist_events()
+            self._dirty = True
+            self._schedule_persist()
 
     def get_recent_events(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Get recent events without memory churn."""
@@ -85,6 +90,30 @@ class EventBroadcaster:
         with self._lock:
             self._load_persisted_events()
             return list(self.events)[-limit:] if limit < len(self.events) else list(self.events)
+
+    def _schedule_persist(self):
+        """Schedule persistence after a delay to batch multiple events."""
+        if self._persist_timer and self._persist_timer.is_alive():
+            self._persist_timer.cancel()
+
+        self._persist_timer = threading.Timer(
+            self._batch_interval, self._persist_if_dirty)
+        self._persist_timer.start()
+
+    def _persist_if_dirty(self):
+        """Persist events only if there are changes."""
+        with self._lock:
+            if self._dirty:
+                self._persist_events()
+                self._dirty = False
+
+    def cleanup(self):
+        """Clean up timer resources."""
+        if self._persist_timer and self._persist_timer.is_alive():
+            self._persist_timer.cancel()
+        # Persist any remaining dirty events before cleanup
+        if self._dirty:
+            self._persist_events()
 
 
 # Global broadcaster instance

@@ -21,23 +21,26 @@ class AsyncRTSPProcessingService:
         Config.validate()
         self.logger = logging.getLogger(__name__)
         self.config = Config
-        
+
         # Initialize notification dispatcher
         target_map = {
             "local_speaker": NotificationTarget.LOCAL_SPEAKER,
             "google_hub": NotificationTarget.GOOGLE_HUB,
             "both": NotificationTarget.BOTH
         }
-        self.notification_target = target_map.get(self.config.NOTIFICATION_TARGET, NotificationTarget.BOTH)
+        self.notification_target = target_map.get(
+            self.config.NOTIFICATION_TARGET, NotificationTarget.BOTH)
         self.dispatcher = NotificationDispatcher(
             google_device_ip=self.config.GOOGLE_DEVICE_IP,
             google_device_name=self.config.GOOGLE_DEVICE_NAME
         )
-    
+
     def cleanup(self):
         """Clean up service resources."""
         if hasattr(self, 'dispatcher'):
             self.dispatcher.cleanup()
+        # Clean up event broadcaster timers
+        broadcaster.cleanup()
 
     async def process_frame_async(self, frame) -> bool:
         """Process single frame asynchronously."""
@@ -50,7 +53,8 @@ class AsyncRTSPProcessingService:
             # Quick person detection with YOLOv8
             if not person_detected_yolov8_frame(frame, model_path=self.config.YOLO_MODEL_PATH):
                 self.logger.info("No person detected (YOLOv8)")
-                broadcaster.emit('detection', {'status': 'no_person', 'method': 'YOLO'})
+                broadcaster.emit(
+                    'detection', {'status': 'no_person', 'method': 'YOLO'})
                 return False
 
             # Save frame to disk only when person detected
@@ -72,14 +76,15 @@ class AsyncRTSPProcessingService:
 
             if result["person_present"]:
                 broadcaster.emit('detection', {
-                    'status': 'person_confirmed', 
+                    'status': 'person_confirmed',
                     'description': result.get('description', 'Unknown')
                 })
                 await self._handle_person_detected_async(image_path, result)
                 return True
             else:
                 self.logger.info("Person not confirmed by LLM")
-                broadcaster.emit('detection', {'status': 'person_not_confirmed', 'method': 'LLM'})
+                broadcaster.emit(
+                    'detection', {'status': 'person_not_confirmed', 'method': 'LLM'})
                 # Clean up image if no person confirmed
                 try:
                     os.remove(image_path)
@@ -107,7 +112,7 @@ class AsyncRTSPProcessingService:
             desc=description)
 
         success = self.dispatcher.dispatch(message, self.notification_target)
-        
+
         broadcaster.emit('notification', {
             'success': success,
             'message': message,

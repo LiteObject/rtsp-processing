@@ -18,6 +18,10 @@ class YOLOv8ModelSingleton:
     _instances = {}
     _lock = threading.Lock()
 
+    def __init__(self, model_path='yolov8n.pt'):
+        if not hasattr(self, '_model'):
+            self._model = YOLO(model_path)
+
     def __new__(cls, model_path='yolov8n.pt'):
         """
         Create or return the singleton instance of the YOLOv8 model.
@@ -32,7 +36,6 @@ class YOLOv8ModelSingleton:
             with cls._lock:
                 if model_path not in cls._instances:
                     instance = super().__new__(cls)
-                    instance._model = YOLO(model_path)
                     cls._instances[model_path] = instance
         return cls._instances[model_path]
 

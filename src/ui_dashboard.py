@@ -185,7 +185,7 @@ def main():
         st.metric("Persons Confirmed", len(person_confirmed))
     with metrics_col4:
         last_activity = format_datetime_friendly(
-            events[0]['timestamp']) if events else "None"
+            events[-1]['timestamp']) if events else "None"
         st.metric("Last Activity", last_activity)
 
     # Main content area
@@ -211,14 +211,14 @@ def main():
                                 timestamp = datetime.fromtimestamp(
                                     os.path.getmtime(img_path))
                                 filename = os.path.basename(img_path)
-                                is_detected = "_Detected" in filename
+                                # is_detected = "_Detected" in filename
 
-                                if is_detected:
-                                    st.success(f"✅ Person Detected")
+                                # if is_detected:
+                                #     st.success(f"✅ Person Detected")
 
                                 st.image(
                                     img_path, caption=f"{filename}\n{format_datetime_friendly(timestamp)}")
-                            except Exception as e:
+                            except (OSError, IOError) as e:
                                 st.error(f"Error loading image: {e}")
                 else:
                     st.info("No images captured yet")
