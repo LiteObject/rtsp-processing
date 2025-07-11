@@ -14,7 +14,7 @@ from uuid import uuid4
 import pychromecast
 from zeroconf.asyncio import AsyncZeroconf
 from pychromecast.discovery import CastBrowser, SimpleCastListener
-from pychromecast.models import CastInfo, HostServiceInfo
+from pychromecast.models import CastInfo, HostServiceInfo, MDNSServiceInfo
 
 
 class CollectingCastListener(SimpleCastListener):
@@ -229,8 +229,8 @@ async def send_message_to_google_hub_async(message: str, device_ip: str, volume:
 
     try:
         # Create CastInfo for the known device
-        services: Set[Union[HostServiceInfo, 'MDNSServiceInfo']] = {
-            HostServiceInfo(device_ip, port)}  # type: ignore[assignment]
+        services: Set[Union[HostServiceInfo, MDNSServiceInfo]] = {
+            HostServiceInfo(device_ip, port)}
         cast_info = CastInfo(
             services=services,
             uuid=uuid4(),  # Generate a temporary UUID
