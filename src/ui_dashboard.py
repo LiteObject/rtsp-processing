@@ -1,13 +1,14 @@
 """
 Real-time Streamlit dashboard for RTSP processing monitoring.
 """
-import streamlit as st
-import time
-import os
 import glob
-import sys
+import os
 import re
+import sys
+import time
 from datetime import datetime
+
+import streamlit as st
 
 # Add the parent directory to Python path for absolute imports
 if __name__ == "__main__":
@@ -22,7 +23,7 @@ except ImportError:
     from src.event_broadcaster import broadcaster
 
 
-@st.cache_data(ttl=2)  # Cache for 2 seconds to reduce load
+@st.cache_data(ttl=1)  # Reduced cache time for more responsive updates
 def get_cached_events():
     """Get events with caching to improve performance."""
     return broadcaster.get_recent_events(100)
@@ -111,6 +112,90 @@ def check_background_service_status():
     return False
 
 
+def show_system_status():
+    """Show system status indicators."""
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        # Check recent events for activity
+        events = broadcaster.get_recent_events(10)
+        recent_events = []
+        for e in events:
+            try:
+                ts = e['timestamp']
+                # Handle both datetime objects and ISO strings
+                if isinstance(ts, str):
+                    ts = datetime.fromisoformat(ts)
+                time_diff = (datetime.now() - ts).total_seconds()
+                if time_diff < 300:  # 5 minutes
+                    recent_events.append(e)
+            except (TypeError, ValueError, KeyError):
+                continue
+
+        if recent_events:
+            st.success("🟢 Event System: Active")
+        else:
+            st.warning("🟡 Event System: Idle")
+
+    with col2:
+        # Check background service
+        background_active = check_background_service_status()
+        if background_active:
+            st.success("🟢 Background Service: Running")
+        else:
+            st.error("🔴 Background Service: Not Detected")
+
+    with col3:
+        # Show last detection status
+        detection_events = [e for e in events if e.get('type') == 'detection']
+        if detection_events:
+            # Get the most recent, not first
+            last_detection = detection_events[-1]
+            status = last_detection.get('data', {}).get('status', 'unknown')
+            if status in ['person_detected', 'person_confirmed']:
+                st.info("👤 Last Detection: Person")
+            else:
+                st.info("👁️ Last Detection: No Person")
+        else:
+            st.info("❓ Last Detection: Unknown")
+
+
+def format_event_for_display(event):
+    """Format an event for user-friendly display."""
+    timestamp = format_datetime_friendly(event['timestamp'])
+    event_type = event['type']
+    data = event.get('data', {})
+
+    if event_type == 'detection':
+        status = data.get('status', 'unknown')
+        method = data.get('method', 'Unknown')
+        if status == 'person_detected':
+            return f"👤 **Person Detected** via {method} at {timestamp}"
+        elif status == 'person_confirmed':
+            return f"✅ **Person Confirmed** via {method} at {timestamp}"
+        else:
+            return f"👁️ No person detected via {method} at {timestamp}"
+
+    elif event_type == 'image':
+        filepath = data.get('filepath', 'Unknown')
+        filename = os.path.basename(filepath) if filepath else 'Unknown'
+        return f"📸 **Image Captured**: {filename} at {timestamp}"
+
+    elif event_type == 'analysis':
+        description = data.get('description', 'No description')
+        return f"🧠 **AI Analysis**: {description} at {timestamp}"
+
+    elif event_type == 'notification':
+        success = data.get('success', False)
+        message = data.get('message', 'No message')
+        target = data.get('target', 'Unknown')
+        status_icon = "✅" if success else "❌"
+        return f"{status_icon} **Notification** to {target}: {message} at {timestamp}"
+
+    else:
+        return f"ℹ️ **{event_type.title()}** at {timestamp}"
+
+
 def main():
     """Main dashboard function."""
     st.set_page_config(
@@ -121,13 +206,15 @@ def main():
 
     st.title("🎥 Real-time RTSP Processing Monitor")
 
-    # Background service status indicator
+    # Show system status
+    show_system_status()
+
+    st.markdown("---")  # Separator line
+
     background_active = check_background_service_status()
-    if background_active:
-        st.success("🟢 Background processing is active")
-    else:
+    if not background_active:
         st.warning(
-            "🟡 Background processing not detected - Run `python -m src.app --with-ui` for full functionality")
+            "⚠️ Background processing not detected - Run `python -m src.app --with-ui` for full functionality")
 
         # Show helpful debug info in an expander
         with st.expander("🔍 Debug Info - Click to expand"):
@@ -162,8 +249,10 @@ def main():
     # Auto-refresh toggle
     if 'auto_refresh' not in st.session_state:
         st.session_state.auto_refresh = True
-    if 'last_refresh' not in st.session_state:
-        st.session_state.last_refresh = time.time()
+    if 'last_event_count' not in st.session_state:
+        st.session_state.last_event_count = 0
+    if 'last_event_timestamp' not in st.session_state:
+        st.session_state.last_event_timestamp = None
 
     # Control panel
     col1, col2, col3 = st.columns([1, 1, 4])
@@ -171,22 +260,58 @@ def main():
         if st.button("🔄 Refresh"):
             st.rerun()
     with col2:
-        st.session_state.auto_refresh = st.checkbox(
-            "Auto-refresh (2s)", value=st.session_state.auto_refresh)
-        if st.session_state.auto_refresh:
-            # Show refresh indicator
-            refresh_placeholder = st.empty()
-            current_time = time.time()
-            time_since_refresh = current_time - st.session_state.last_refresh
-            refresh_placeholder.caption(
-                f"🔄 Next refresh in {max(0, 2.0 - time_since_refresh):.1f}s")
+        auto_refresh_enabled = st.checkbox(
+            "Auto-refresh (event-driven)", value=st.session_state.auto_refresh)
+        st.session_state.auto_refresh = auto_refresh_enabled
 
-    # Non-blocking auto-refresh check
+    # Event-driven auto-refresh
     if st.session_state.auto_refresh:
-        current_time = time.time()
-        if current_time - st.session_state.last_refresh >= 2.0:
-            st.session_state.last_refresh = current_time
-            st.rerun()
+        # Get fresh events (bypass cache for this check)
+        current_events = broadcaster.get_recent_events(100)
+        current_event_count = len(current_events)
+
+        # Check both count and latest event timestamp for changes
+        latest_event_timestamp = current_events[-1]['timestamp'] if current_events else None
+
+        # Detect new events by count OR timestamp change
+        has_new_events = (
+            current_event_count != st.session_state.last_event_count or
+            latest_event_timestamp != st.session_state.last_event_timestamp
+        )
+
+        if has_new_events:
+            # New events detected - update state and refresh immediately
+            st.session_state.last_event_count = current_event_count
+            st.session_state.last_event_timestamp = latest_event_timestamp
+            st.success(
+                f"🔄 New events detected! Refreshing... ({current_event_count} total events)")
+            # Show what changed for debugging
+            if current_event_count != st.session_state.last_event_count:
+                st.info(
+                    f"Event count changed: {st.session_state.last_event_count} → {current_event_count}")
+            if latest_event_timestamp != st.session_state.last_event_timestamp:
+                st.info(f"Latest event timestamp changed")
+            # Clear cache to ensure fresh data on next load
+            st.cache_data.clear()
+            # Small delay to show the message, then refresh
+            st.html("""
+            <script>
+            setTimeout(function() {
+                window.location.reload();
+            }, 800);  // 0.8 second delay to show the message
+            </script>
+            """)
+        else:
+            # No new events - show monitoring status and check periodically
+            st.caption(
+                f"🔄 Monitoring for new events... ({current_event_count} total events)")
+            st.html("""
+            <script>
+            setTimeout(function() {
+                window.location.reload();
+            }, 2000);  // Check every 2 seconds when no new events
+            </script>
+            """)
 
     # Get recent events
     events = get_cached_events()
@@ -258,40 +383,27 @@ def main():
             event_container = st.container()
             with event_container:
                 for event in events[-15:]:  # Show last 15 events
-                    timestamp_str = format_datetime_friendly(
-                        event['timestamp'])
+                    formatted_event = format_event_for_display(event)
 
+                    # Use different styling based on event type
                     if event['type'] == 'detection':
                         status = event['data'].get('status', 'unknown')
-                        if status == 'person_confirmed':
-                            description = event['data'].get(
-                                'description', 'Unknown')
-                            st.success(
-                                f"✅ {timestamp_str} - Person: {description}")
-                        elif status == 'no_person':
-                            method = event['data'].get('method', 'Unknown')
-                            st.info(
-                                f"ℹ️ {timestamp_str} - No person ({method})")
+                        if status in ['person_detected', 'person_confirmed']:
+                            st.success(formatted_event)
                         else:
-                            st.text(f"🔍 {timestamp_str} - {status}")
-
-                    elif event['type'] == 'image':
-                        img_status = event['data'].get('status', 'unknown')
-                        img_path = event['data'].get('path', 'unknown')
-                        filename = os.path.basename(
-                            img_path) if img_path != 'unknown' else 'unknown'
-                        st.text(
-                            f"📷 {timestamp_str} - {filename} ({img_status})")
-
+                            st.info(formatted_event)
                     elif event['type'] == 'notification':
                         success = event['data'].get('success', False)
-                        message = event['data'].get('message', 'Unknown')
                         if success:
-                            st.success(
-                                f"📢 {timestamp_str} - Sent: {message[:30]}...")
+                            st.success(formatted_event)
                         else:
-                            st.error(
-                                f"❌ {timestamp_str} - Failed notification")
+                            st.error(formatted_event)
+                    elif event['type'] == 'image':
+                        st.info(formatted_event)
+                    elif event['type'] == 'analysis':
+                        st.info(formatted_event)
+                    else:
+                        st.text(formatted_event)
         else:
             if check_background_service_status():
                 st.info(
@@ -299,37 +411,6 @@ def main():
             else:
                 st.warning(
                     "No events detected. Start background processing with: `python -m src.app --with-ui`")
-
-        # System logs section
-        st.subheader("📄 System Logs")
-        log_file = "logs/rtsp_processing.log"
-        if os.path.exists(log_file):
-            try:
-                with open(log_file, 'r', encoding='utf-8') as f:
-                    lines = f.readlines()[-10:]  # Last 10 lines
-
-                log_container = st.container()
-                with log_container:
-                    for line in reversed(lines):
-                        line = line.strip()
-                        if not line:
-                            continue
-
-                        # Convert log line timestamp to friendly 12-hour format
-                        line = format_log_line_with_friendly_time(line)
-
-                        if "ERROR" in line:
-                            st.error(line)
-                        elif "WARNING" in line:
-                            st.warning(line)
-                        elif "Person detected" in line or "Notification sent" in line:
-                            st.success(line)
-                        else:
-                            st.text(line)
-            except Exception as e:
-                st.error(f"Error reading log file: {e}")
-        else:
-            st.info("Log file not found")
 
 
 if __name__ == "__main__":
