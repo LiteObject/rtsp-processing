@@ -273,6 +273,13 @@ def main():
         # Check both count and latest event timestamp for changes
         latest_event_timestamp = current_events[-1]['timestamp'] if current_events else None
 
+        # Initialize session state on first run
+        if st.session_state.last_event_count == 0 and st.session_state.last_event_timestamp is None:
+            st.session_state.last_event_count = current_event_count
+            st.session_state.last_event_timestamp = latest_event_timestamp
+            st.info(
+                f"🔄 Dashboard initialized with {current_event_count} events")
+
         # Detect new events by count OR timestamp change
         has_new_events = (
             current_event_count != st.session_state.last_event_count or
@@ -280,9 +287,7 @@ def main():
         )
 
         if has_new_events:
-            # New events detected - update state and refresh immediately
-            st.session_state.last_event_count = current_event_count
-            st.session_state.last_event_timestamp = latest_event_timestamp
+            # New events detected - update state and refresh after a delay
             st.success(
                 f"🔄 New events detected! Refreshing... ({current_event_count} total events)")
             # Show what changed for debugging
@@ -291,6 +296,11 @@ def main():
                     f"Event count changed: {st.session_state.last_event_count} → {current_event_count}")
             if latest_event_timestamp != st.session_state.last_event_timestamp:
                 st.info(f"Latest event timestamp changed")
+
+            # Update session state BEFORE refresh to prevent infinite loop
+            st.session_state.last_event_count = current_event_count
+            st.session_state.last_event_timestamp = latest_event_timestamp
+
             # Clear cache to ensure fresh data on next load
             st.cache_data.clear()
             # Small delay to show the message, then refresh
@@ -298,7 +308,7 @@ def main():
             <script>
             setTimeout(function() {
                 window.location.reload();
-            }, 800);  // 0.8 second delay to show the message
+            }, 1500);  // 1.5 second delay to show the message and prevent rapid reloads
             </script>
             """)
         else:
@@ -309,7 +319,7 @@ def main():
             <script>
             setTimeout(function() {
                 window.location.reload();
-            }, 2000);  // Check every 2 seconds when no new events
+            }, 3000);  // Check every 3 seconds when no new events (reduced frequency)
             </script>
             """)
 
