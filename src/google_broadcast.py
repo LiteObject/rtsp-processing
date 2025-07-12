@@ -4,15 +4,17 @@ google_broadcast.py
 Broadcasts a text-to-speech message to a Google Hub or compatible Chromecast device.
 """
 
+import asyncio
 import logging
 import time
 import urllib.parse
+from typing import Set, Union
 from uuid import uuid4
 
 import pychromecast
-import zeroconf
+from zeroconf.asyncio import AsyncZeroconf
 from pychromecast.discovery import CastBrowser, SimpleCastListener
-from pychromecast.models import CastInfo, HostServiceInfo
+from pychromecast.models import CastInfo, HostServiceInfo, MDNSServiceInfo
 
 
 class CollectingCastListener(SimpleCastListener):
@@ -28,7 +30,7 @@ class CollectingCastListener(SimpleCastListener):
         super().__init__()
         self.devices = []
         self.seen_services = set()
-        self.browser = None  # Will be set by the discover function
+        self.browser: CastBrowser | None = None  # Will be set by the discover function
 
     def add_service(self, _zconf, _type_, name):
         """
@@ -133,9 +135,9 @@ class MediaStatusListener:
             self.message_played = True
 
 
-def discover_all_chromecasts():
+async def discover_all_chromecasts_async():
     """
-    Discover and list all available Chromecast devices on the network.
+    Discover and list all available Chromecast devices on the network using async zeroconf.
 
     Uses CastBrowser with a custom listener to discover Google Cast devices.
     Waits 15 seconds for comprehensive device discovery, which is optimized
@@ -152,8 +154,8 @@ def discover_all_chromecasts():
     logging.info("Starting device discovery with CastBrowser...")
 
     listener = CollectingCastListener()
-    zconf = zeroconf.Zeroconf()
-    browser = CastBrowser(listener, zconf)
+    async_zconf = AsyncZeroconf()
+    browser = CastBrowser(listener, async_zconf.zeroconf)
 
     # Set the browser reference so the listener can access devices
     listener.browser = browser
@@ -164,10 +166,10 @@ def discover_all_chromecasts():
         discovery_timeout = 15
         logging.info("Waiting %d seconds for device discovery...",
                      discovery_timeout)
-        time.sleep(discovery_timeout)
+        await asyncio.sleep(discovery_timeout)
     finally:
         browser.stop_discovery()
-        zconf.close()
+        await async_zconf.async_close()
 
     chromecasts = listener.devices
 
@@ -190,7 +192,7 @@ def discover_all_chromecasts():
     return {cast.cast_info.host: cast for cast in chromecasts}
 
 
-def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0, port: int = 8009, friendly_name: str = "Google Hub Device") -> bool:
+async def send_message_to_google_hub_async(message: str, device_ip: str, volume: float = 1.0, port: int = 8009, friendly_name: str = "Google Hub Device") -> bool:
     """
     Sends a text-to-speech message directly to a Google Hub or compatible Chromecast device.
     Uses direct connection approach for better reliability.
@@ -221,12 +223,14 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
     logging.info("Broadcasting directly to %s (%s)...",
                  friendly_name, device_ip)
 
-    # Create a new zeroconf instance for the broadcast
-    zconf = zeroconf.Zeroconf()
+    # Create a new async zeroconf instance for the broadcast
+    async_zconf = AsyncZeroconf()
+    chromecast = None
 
     try:
         # Create CastInfo for the known device
-        services = {HostServiceInfo(device_ip, port)}
+        services: Set[Union[HostServiceInfo, MDNSServiceInfo]] = {
+            HostServiceInfo(device_ip, port)}
         cast_info = CastInfo(
             services=services,
             uuid=uuid4(),  # Generate a temporary UUID
@@ -241,7 +245,8 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
         # Connect to the Chromecast device
         logging.info("Connecting to %s (%s:%d)...",
                      friendly_name, device_ip, port)
-        chromecast = pychromecast.Chromecast(cast_info, zconf=zconf)
+        chromecast = pychromecast.Chromecast(
+            cast_info, zconf=async_zconf.zeroconf)
 
         # Wait for the device to be ready
         chromecast.wait()
@@ -275,11 +280,73 @@ def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0
         return False
     finally:
         try:
-            chromecast.quit_app()
+            if chromecast:
+                chromecast.quit_app()
         except (AttributeError, ConnectionError):
             pass
         finally:
-            zconf.close()
+            await async_zconf.async_close()
+
+
+def discover_all_chromecasts():
+    """
+    Synchronous wrapper for discover_all_chromecasts_async.
+    Use this when calling from non-async code.
+    """
+    try:
+        # Check if we're already in an event loop
+        loop = asyncio.get_running_loop()
+        # If we are, we need to run in a thread to avoid "asyncio.run() cannot be called from a running event loop"
+        import concurrent.futures
+
+        def run_async():
+            # Create a new event loop for this thread
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                return new_loop.run_until_complete(discover_all_chromecasts_async())
+            finally:
+                new_loop.close()
+
+        # Run in a separate thread
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_async)
+            return future.result(timeout=30)  # 30 second timeout
+
+    except RuntimeError:
+        # No event loop running, safe to use asyncio.run()
+        return asyncio.run(discover_all_chromecasts_async())
+
+
+def send_message_to_google_hub(message: str, device_ip: str, volume: float = 1.0, port: int = 8009, friendly_name: str = "Google Hub Device") -> bool:
+    """
+    Synchronous wrapper for send_message_to_google_hub_async.
+    Use this when calling from non-async code.
+    """
+    try:
+        # Check if we're already in an event loop
+        loop = asyncio.get_running_loop()
+        # If we are, we need to run in a thread to avoid "asyncio.run() cannot be called from a running event loop"
+        import concurrent.futures
+        import threading
+
+        def run_async():
+            # Create a new event loop for this thread
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                return new_loop.run_until_complete(send_message_to_google_hub_async(message, device_ip, volume, port, friendly_name))
+            finally:
+                new_loop.close()
+
+        # Run in a separate thread
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_async)
+            return future.result(timeout=30)  # 30 second timeout
+
+    except RuntimeError:
+        # No event loop running, safe to use asyncio.run()
+        return asyncio.run(send_message_to_google_hub_async(message, device_ip, volume, port, friendly_name))
 
 
 def main() -> None:
@@ -302,6 +369,29 @@ def main() -> None:
 
     # Then try to send message using direct broadcast
     success = send_message_to_google_hub(
+        "Hello World", "192.168.7.38", friendly_name="Kitchen display"
+    )
+
+    if success:
+        logging.info("Broadcast completed successfully!")
+    else:
+        logging.error("Broadcast failed!")
+
+
+async def main_async() -> None:
+    """
+    Async example usage and testing of google_broadcast functionality.
+    Use this when calling from async contexts.
+    """
+    # Setup logging to see debug messages
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s - %(levelname)s - %(message)s')
+
+    # First, discover all available devices (optional)
+    # await discover_all_chromecasts_async()
+
+    # Then try to send message using direct broadcast
+    success = await send_message_to_google_hub_async(
         "Hello World", "192.168.7.38", friendly_name="Kitchen display"
     )
 
